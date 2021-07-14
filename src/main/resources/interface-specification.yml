@@ -1,0 +1,246 @@
+openapi: 3.0.3
+info:
+  title: Attributes Registry
+  description: Service managing the persistence of attributes in a local registry
+  version: 0.0.1
+  contact:
+    name: API Support
+    url: 'http://www.example.com/support'
+    email: support@example.com
+  termsOfService: 'http://swagger.io/terms/'
+  x-api-id: an x-api-id
+  x-summary: an x-summary
+servers:
+  - url: 'https://gateway.interop.pdnd.dev/pdnd-interop-uservice-attribute-registry-management/0.0.1'
+    description: This service is the party manager
+tags:
+  - name: attribute
+    description: Operations about party persistence and lookup
+  - name: health
+    description: Health operations about service status
+paths:
+  '/attribute':
+    post:
+      summary: Creates attribute
+      tags:
+        - attribute
+      operationId: createAttribute
+      responses:
+        '201':
+          description: Attribute created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attribute'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      description: Creates the attributes passed as payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttributeSeed'
+        description: Contains the attribute data to save.
+  '/attributes':
+    get:
+      summary: 'returns the list of attributes available on the registry'
+      tags:
+        - attribute
+      operationId: getAttributes
+      responses:
+        '200':
+          description: array of currently available attributes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributesResponse'
+        '404':
+          description: Attributes not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      description: Returns the list of currently available attributes
+  '/attribute/name/{name}':
+    get:
+      summary: Get Attribute by name
+      tags:
+        - attribute
+      responses:
+        '200':
+          description: Attribute data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attribute'
+        '404':
+          description: Attribute not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      operationId: getAttributeByName
+      description: 'returns the attribute in the registry corresponding to name, if any.'
+    parameters:
+      - schema:
+          type: string
+        name: name
+        in: path
+        required: true
+        description: name of the attribute to lookup.
+  '/attribute/{attributeId}':
+    get:
+      summary: Get Attribute
+      tags:
+        - attribute
+      responses:
+        '200':
+          description: Attribute data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attribute'
+        '404':
+          description: Attribute not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      operationId: getAttributeById
+      description: 'returns the attribute in the registry corresponding to attributeId, if any.'
+    parameters:
+      - schema:
+          type: string
+          format: uuid
+        name: attributeId
+        in: path
+        required: true
+        description: registry identifier of the attribute to lookup.
+    delete:
+      summary: Delete attribute
+      tags:
+        - attribute
+      operationId: deleteAttributeById
+      responses:
+        '204':
+          description: Attribute removed
+        '404':
+          description: Attribute not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      description: 'Removes the attribute identified by attributeId, if any.'
+  /status:
+    get:
+      tags:
+        - health
+      summary: Health status endpoint
+      description: Return ok
+      operationId: getStatus
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  schemas:
+    Problem:
+      properties:
+        detail:
+          description: A human readable explanation specific to this occurrence of the problem.
+          example: Request took too long to complete.
+          maxLength: 4096
+          pattern: '^.{0,1024}$'
+          type: string
+        status:
+          description: The HTTP status code generated by the origin server for this occurrence of the problem.
+          example: 503
+          exclusiveMaximum: true
+          format: int32
+          maximum: 600
+          minimum: 100
+          type: integer
+        title:
+          description: 'A short, summary of the problem type. Written in english and readable'
+          example: Service Unavailable
+          maxLength: 64
+          pattern: '^[ -~]{0,64}$'
+          type: string
+      additionalProperties: false
+      required:
+        - status
+        - title
+    Attribute:
+      title: Attribute
+      type: object
+      x-tags:
+        - attribute
+      description: Models the attribute registry entry as payload response
+      properties:
+        id:
+          type: string
+          description: uniquely identifies the attribute on the registry
+        code:
+          type: string
+          description: identifies the unique code of this attribute on the origin registry
+        certified:
+          type: boolean
+          description: says if this attribute is certified
+        description:
+          type: string
+        origin:
+          type: string
+          description: 'represents the origin of this attribute (e.g.: IPA, Normattiva, etc.)'
+        name:
+          type: string
+        creationTime:
+          type: string
+          format: date-time
+      required:
+        - id
+        - description
+        - certified
+        - name
+        - creationTime
+    AttributeSeed:
+      title: AttributeSeed
+      type: object
+      x-tags:
+        - attribute
+      description: Models the attribute registry entry as payload response
+      properties:
+        code:
+          type: string
+          description: identifies the unique code of this attribute on the registry
+        certified:
+          type: boolean
+          description: says if this attribute is certified
+        description:
+          type: string
+        origin:
+          type: string
+          description: 'represents the origin of this attribute (e.g.: IPA for the certified ones, etc.)'
+        name:
+          type: string
+      required:
+        - description
+        - name
+        - certified
+    AttributesResponse:
+      title: AttributesResponse
+      type: object
+      properties:
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+      required:
+        - attributes
