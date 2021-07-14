@@ -9,9 +9,9 @@ option (scalapb.options) = {
 message AttributeV1 {
   required string id = 1;
   optional string code = 2;
-  required bool certified = 3;
-  required string description = 4;
-  optional string origin = 5;
-  required string name = 6;
+  optional string origin = 3;
+  required bool certified = 4;
+  required string name = 5;
+  required string description = 6;
   required string creationTime = 7;
 }
