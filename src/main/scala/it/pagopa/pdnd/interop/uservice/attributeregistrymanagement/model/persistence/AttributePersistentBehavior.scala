@@ -9,6 +9,7 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, RetentionCriteria}
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.Attribute
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute.toAPI
+import org.slf4j.LoggerFactory
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.{DurationInt, DurationLong}
@@ -17,6 +18,8 @@ import scala.language.postfixOps
 object AttributePersistentBehavior {
 
   final case object AttributeNotFoundException extends Throwable
+
+  private val log = LoggerFactory.getLogger(getClass)
 
   def commandHandler(
     shard: ActorRef[ClusterSharding.ShardCommand],
@@ -54,7 +57,9 @@ object AttributePersistentBehavior {
         }
       }
       case GetAttributes(from, to, replyTo) => {
+        log.error("Getting attributes...")
         val reply = state.getAttributes.slice(from, to).map(toAPI)
+        log.error("Attributes retrieved...")
         replyTo ! reply
         Effect.none[Event, State]
       }
