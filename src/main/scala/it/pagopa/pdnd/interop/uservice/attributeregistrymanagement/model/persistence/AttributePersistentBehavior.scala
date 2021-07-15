@@ -1,6 +1,5 @@
 package it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence
 
-import akka.Done
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, EntityTypeKey}
@@ -32,17 +31,6 @@ object AttributePersistentBehavior {
           .thenRun((_: State) => replyTo ! StatusReply.Success(toAPI(attribute)))
       }
 
-      case DeleteAttribute(attributeId, replyTo) => {
-        state.getAttribute(attributeId) match {
-          case Some(_) =>
-            Effect
-              .persist(AttributeDeleted(attributeId))
-              .thenRun((_: State) => replyTo ! StatusReply.Success(Done))
-          case None =>
-            replyTo ! StatusReply.Error[Done](AttributeNotFoundException)
-            Effect.none[Event, State]
-        }
-      }
       case GetAttribute(attributeId, replyTo) => {
         state.getAttribute(attributeId) match {
           case Some(attribute) =>
@@ -74,7 +62,6 @@ object AttributePersistentBehavior {
   val eventHandler: (State, Event) => State = (state, event) =>
     event match {
       case AttributeAdded(attribute) => state.add(attribute)
-      case AttributeDeleted(petId)   => state.delete(petId)
     }
 
   val TypeKey: EntityTypeKey[Command] =

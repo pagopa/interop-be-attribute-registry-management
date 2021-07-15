@@ -121,21 +121,6 @@ paths:
         in: path
         required: true
         description: registry identifier of the attribute to lookup.
-    delete:
-      summary: Delete attribute
-      tags:
-        - attribute
-      operationId: deleteAttributeById
-      responses:
-        '204':
-          description: Attribute removed
-        '404':
-          description: Attribute not found.
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-      description: 'Removes the attribute identified by attributeId, if any.'
   /status:
     get:
       tags:

@@ -2,10 +2,7 @@ package it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persis
 
 import cats.implicits.toTraverseOps
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.serializer.v1.events.{
-  AttributeAddedV1,
-  AttributeDeletedV1
-}
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.serializer.v1.events.AttributeAddedV1
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.serializer.v1.protobufUtils.{
   toPersistentAttribute,
   toProtobufAttribute
@@ -14,11 +11,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
   StateEntryV1,
   StateV1
 }
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.{
-  AttributeAdded,
-  AttributeDeleted,
-  State
-}
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.{AttributeAdded, State}
 
 package object v1 {
 
@@ -55,12 +48,4 @@ package object v1 {
     event => {
       Right[Throwable, AttributeAddedV1](AttributeAddedV1(toProtobufAttribute(event.attribute)))
     }
-
-  implicit def attributeDeletedV1PersistEventDeserializer
-    : PersistEventDeserializer[AttributeDeletedV1, AttributeDeleted] =
-    event => Right[Throwable, AttributeDeleted](AttributeDeleted(attributeId = event.attributeId))
-
-  implicit def attributeDeletedV1PersistEventSerializer: PersistEventSerializer[AttributeDeleted, AttributeDeletedV1] =
-    event => Right[Throwable, AttributeDeletedV1](AttributeDeletedV1.of(event.attributeId))
-
 }

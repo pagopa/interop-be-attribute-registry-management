@@ -1,6 +1,5 @@
 package it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl
 
-import akka.Done
 import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
@@ -12,13 +11,13 @@ import cats.data.Validated.{Invalid, Valid}
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.AttributeApiService
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.common.system._
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model._
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence._
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute.{
   fromSeed,
   toAPI
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.validation.Validation
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence._
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.UUIDSupplier
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -81,23 +80,6 @@ class AttributeApiServiceImpl(
       case Invalid(e) => createAttribute400(Problem(Option(e.toList.mkString(",")), status = 400, "some error"))
     }
 
-  }
-
-  /** Code: 204, Message: Attribute removed
-    * Code: 404, Message: Attribute not found., DataType: Problem
-    */
-  override def deleteAttributeById(
-    attributeId: String
-  )(implicit toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route = {
-    logger.info(s"Removing attribute $attributeId...")
-    val commander: EntityRef[Command] =
-      sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
-    val result: Future[StatusReply[Done]] = commander.ask(ref => DeleteAttribute(attributeId, ref))
-    onSuccess(result) {
-      case statusReply if statusReply.isSuccess => deleteAttributeById204
-      case statusReply if statusReply.isError =>
-        deleteAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 400, "some error"))
-    }
   }
 
   /** Code: 200, Message: Attribute data, DataType: Attribute

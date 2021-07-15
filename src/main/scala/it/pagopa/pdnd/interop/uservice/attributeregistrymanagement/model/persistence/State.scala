@@ -4,7 +4,6 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
 
 final case class State(attributes: Map[String, PersistentAttribute]) extends Persistable {
   def add(attribute: PersistentAttribute): State = copy(attributes = attributes + (attribute.id.toString -> attribute))
-  def delete(attributeId: String): State         = copy(attributes = attributes - attributeId)
   def update(updatedAttribute: PersistentAttribute): State = {
     attributes
       .get(updatedAttribute.id.toString)

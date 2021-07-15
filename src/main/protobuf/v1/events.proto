@@ -11,7 +11,3 @@ message AttributeAddedV1 {
   required AttributeV1 attribute = 1;
 }
 
-message AttributeDeletedV1 {
-  required string attributeId = 1;
-}
-
