@@ -9,8 +9,8 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{
 }
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, RootJsonFormat, deserializationError}
 
-import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
+import java.time.{LocalDateTime, OffsetDateTime, ZoneOffset}
 import scala.util.Try
 
 package object impl extends SprayJsonSupport with DefaultJsonProtocol {
@@ -26,14 +26,15 @@ package object impl extends SprayJsonSupport with DefaultJsonProtocol {
     override def read(json: JsValue): OffsetDateTime = {
       json match {
         case JsString(lTString) =>
-          Try(OffsetDateTime.parse(lTString, formatter)).getOrElse(deserializationError(deserializationErrorMessage))
+          Try(OffsetDateTime.of(LocalDateTime.parse(lTString, formatter), ZoneOffset.UTC))
+            .getOrElse(deserializationError(deserializationErrorMessage))
         case _ => deserializationError(deserializationErrorMessage)
       }
     }
   }
 
-  implicit val problemFormat: RootJsonFormat[Problem]                             = jsonFormat3(Problem)
-  implicit val attributeSeedFormat: RootJsonFormat[AttributeSeed]                 = jsonFormat5(AttributeSeed)
-  implicit val attributeFormat: RootJsonFormat[Attribute]                         = jsonFormat7(Attribute)
-  implicit val attributesByKindResponseFormat: RootJsonFormat[AttributesResponse] = jsonFormat1(AttributesResponse)
+  implicit val problemFormat: RootJsonFormat[Problem]                       = jsonFormat3(Problem)
+  implicit val attributeSeedFormat: RootJsonFormat[AttributeSeed]           = jsonFormat5(AttributeSeed)
+  implicit val attributeFormat: RootJsonFormat[Attribute]                   = jsonFormat7(Attribute)
+  implicit val attributesResponseFormat: RootJsonFormat[AttributesResponse] = jsonFormat1(AttributesResponse)
 }

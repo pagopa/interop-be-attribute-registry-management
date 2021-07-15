@@ -41,6 +41,14 @@ object Main extends App {
 
   lazy val uuidSupplier = new UUIDSupplierImpl
 
+  def buildPersistentEntity(): Entity[Command, ShardingEnvelope[Command]] =
+    Entity(typeKey = AttributePersistentBehavior.TypeKey) { entityContext =>
+      AttributePersistentBehavior(
+        entityContext.shard,
+        PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
+      )
+    }
+
   locally {
     val _ = ActorSystem[Nothing](
       Behaviors.setup[Nothing] { context =>
@@ -54,13 +62,7 @@ object Main extends App {
 
         val sharding: ClusterSharding = ClusterSharding(context.system)
 
-        val petPersistentEntity: Entity[Command, ShardingEnvelope[Command]] =
-          Entity(typeKey = AttributePersistentBehavior.TypeKey) { entityContext =>
-            AttributePersistentBehavior(
-              entityContext.shard,
-              PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
-            )
-          }
+        val petPersistentEntity: Entity[Command, ShardingEnvelope[Command]] = buildPersistentEntity()
 
         val _ = sharding.init(petPersistentEntity)
 
