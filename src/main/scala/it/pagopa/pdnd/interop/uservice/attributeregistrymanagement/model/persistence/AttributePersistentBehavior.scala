@@ -19,8 +19,6 @@ object AttributePersistentBehavior {
 
   final case object AttributeNotFoundException extends Throwable
 
-  private val log = LoggerFactory.getLogger(getClass)
-
   def commandHandler(
     shard: ActorRef[ClusterSharding.ShardCommand],
     context: ActorContext[Command]
@@ -57,9 +55,7 @@ object AttributePersistentBehavior {
         }
       }
       case GetAttributes(from, to, replyTo) => {
-        log.error("Getting attributes...")
         val reply = state.getAttributes.slice(from, to).map(toAPI)
-        log.error("Attributes retrieved...")
         replyTo ! reply
         Effect.none[Event, State]
       }
