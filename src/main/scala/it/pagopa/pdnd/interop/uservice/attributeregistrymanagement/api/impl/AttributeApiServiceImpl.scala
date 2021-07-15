@@ -74,10 +74,10 @@ class AttributeApiServiceImpl(
         onSuccess(result) {
           case statusReply if statusReply.isSuccess => createAttribute201(statusReply.getValue)
           case statusReply if statusReply.isError =>
-            createAttribute400((Problem(Option(statusReply.getError.getMessage), status = 400, "some error")))
+            createAttribute400((Problem(Option(statusReply.getError.getMessage), status = 400, "Persistence error")))
         }
 
-      case Invalid(e) => createAttribute400(Problem(Option(e.toList.mkString(",")), status = 400, "some error"))
+      case Invalid(e) => createAttribute400(Problem(Option(e.toList.mkString(",")), status = 400, "Validation error"))
     }
 
   }
@@ -96,7 +96,7 @@ class AttributeApiServiceImpl(
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
       case statusReply if statusReply.isError =>
-        getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 400, "some error"))
+        getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
   }
 
