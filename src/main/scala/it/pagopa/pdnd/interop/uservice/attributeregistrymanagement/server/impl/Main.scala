@@ -32,6 +32,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.Contro
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.UUIDSupplierImpl
 import kamon.Kamon
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.jdk.CollectionConverters._
 
 @SuppressWarnings(Array("org.wartremover.warts.StringPlusAny", "org.wartremover.warts.Nothing"))
@@ -53,8 +54,9 @@ object Main extends App {
     val _ = ActorSystem[Nothing](
       Behaviors.setup[Nothing] { context =>
         import akka.actor.typed.scaladsl.adapter._
-        val marshallerImpl                              = new AttributeApiMarshallerImpl()
-        implicit val classicSystem: classic.ActorSystem = context.system.toClassic
+        val marshallerImpl                                      = new AttributeApiMarshallerImpl()
+        implicit val classicSystem: classic.ActorSystem         = context.system.toClassic
+        implicit val executionContext: ExecutionContextExecutor = context.system.executionContext
 
         val cluster = Cluster(context.system)
 

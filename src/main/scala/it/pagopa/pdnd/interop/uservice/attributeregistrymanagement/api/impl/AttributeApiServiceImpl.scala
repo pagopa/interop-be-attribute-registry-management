@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
 import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.server.Directives.onSuccess
+import akka.http.scaladsl.server.Directives.{onComplete, onSuccess}
 import akka.http.scaladsl.server.Route
 import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
@@ -23,7 +23,8 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 /** @param uuidSupplier
   * @param system
@@ -43,7 +44,8 @@ class AttributeApiServiceImpl(
   system: ActorSystem[_],
   sharding: ClusterSharding,
   entity: Entity[Command, ShardingEnvelope[Command]]
-) extends AttributeApiService
+)(implicit ec: ExecutionContext)
+    extends AttributeApiService
     with Validation {
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -70,11 +72,11 @@ class AttributeApiServiceImpl(
         val persistentAttribute = fromSeed(attributeSeed, uuidSupplier)
         val commander: EntityRef[Command] =
           sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
-        val result: Future[StatusReply[Attribute]] = commander.ask(ref => CreateAttribute(persistentAttribute, ref))
-        onSuccess(result) {
-          case statusReply if statusReply.isSuccess => createAttribute201(statusReply.getValue)
-          case statusReply if statusReply.isError =>
-            createAttribute400((Problem(Option(statusReply.getError.getMessage), status = 400, "Persistence error")))
+        val result: Future[Attribute] = commander.ask(ref => CreateAttribute(persistentAttribute, ref))
+        onComplete(result) {
+          case Success(attribute) => createAttribute201(attribute)
+          case Failure(exception) =>
+            createAttribute400((Problem(Option(exception.getMessage), status = 400, "Persistence error")))
         }
 
       case Invalid(e) => createAttribute400(Problem(Option(e.toList.mkString(",")), status = 400, "Validation error"))
@@ -129,7 +131,7 @@ class AttributeApiServiceImpl(
         .to(LazyList)
         .flatMap(ref => slices(ref, 100))
 
-    getAttributes200(AttributesResponse(attributes = lazyAttributes))
+    getAttributes200(AttributesResponse(attributes = lazyAttributes.sortBy(_.name)))
   }
 
   private def slices(commander: EntityRef[Command], sliceSize: Int): LazyList[Attribute] = {
@@ -140,8 +142,8 @@ class AttributeApiServiceImpl(
       to: Int,
       lazyList: LazyList[Attribute]
     ): LazyList[Attribute] = {
-      val slice: Seq[Attribute] = Await
-        .result(commander.ask(ref => GetAttributes(from, to, ref)), Duration.Inf)
+
+      val slice: Seq[Attribute] = Await.result(commander.ask(ref => GetAttributes(from, to, ref)), Duration.Inf)
       if (slice.isEmpty)
         lazyList
       else {
@@ -175,4 +177,59 @@ class AttributeApiServiceImpl(
     }
   }
 
+  type DeltaAttributes = (Set[Attribute], Set[AttributeSeed])
+
+  /** Code: 201, Message: Array of created attributes and already exising ones..., DataType: AttributesResponse
+    * Code: 400, Message: Bad Request, DataType: Problem
+    */
+  override def createAttributes(attributesSeed: Seq[AttributeSeed])(implicit
+    toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
+    toEntityMarshallerProblem: ToEntityMarshaller[Problem]
+  ): Route = {
+
+    validateAttributes(attributesSeed) match {
+
+      case Valid(_) => {
+        //getting all the attributes already in memory
+        val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
+          sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString)
+        )
+        val attributesInMemory: LazyList[Attribute] =
+          commanders
+            .to(LazyList)
+            .flatMap(ref => slices(ref, 100))
+
+        //calculating the delta of attributes
+        val delta = attributesSeed.foldLeft[DeltaAttributes]((Set.empty, Set.empty))((delta, seed) => {
+          attributesInMemory.find { persisted =>
+            seed.name.equalsIgnoreCase(persisted.name)
+          } match {
+            case Some(persisted) => (delta._1 + persisted, delta._2)
+            case None            => (delta._1, delta._2 + seed)
+          }
+        })
+
+        //for all the not existing attributes, execute the command to persist them through event sourcing
+        val result: Future[Set[Attribute]] = for {
+          r <- Future.traverse(delta._2) { attributeSeed =>
+            val persistentAttribute = fromSeed(attributeSeed, uuidSupplier)
+            val commander: EntityRef[Command] =
+              sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
+            commander.ask(ref => CreateAttribute(persistentAttribute, ref))
+          }
+        } yield r
+
+        onComplete(result) {
+          case Success(attributeList) => {
+            createAttributes201(AttributesResponse((delta._1 ++ attributeList).toList.sortBy(_.name)))
+          }
+          case Failure(exception) =>
+            createAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes saving error"))
+        }
+      }
+
+      case Invalid(e) => createAttributes400(Problem(Option(e.toList.mkString(",")), status = 400, "Validation error"))
+    }
+
+  }
 }

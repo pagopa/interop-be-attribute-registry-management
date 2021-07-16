@@ -7,8 +7,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
 
 sealed trait Command
 
-final case class CreateAttribute(attribute: PersistentAttribute, replyTo: ActorRef[StatusReply[Attribute]])
-    extends Command
+final case class CreateAttribute(attribute: PersistentAttribute, replyTo: ActorRef[Attribute])    extends Command
 final case class GetAttribute(attributeId: String, replyTo: ActorRef[StatusReply[Attribute]])     extends Command
 final case class GetAttributes(from: Int, to: Int, replyTo: ActorRef[Seq[Attribute]])             extends Command
 final case class GetAttributeByName(name: String, replyTo: ActorRef[Option[PersistentAttribute]]) extends Command

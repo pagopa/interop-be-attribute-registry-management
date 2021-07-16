@@ -12,6 +12,7 @@ final case class State(attributes: Map[String, PersistentAttribute]) extends Per
   def getAttribute(attributeId: String): Option[PersistentAttribute] = attributes.get(attributeId)
   def getCertifiedAttributes: Seq[PersistentAttribute]               = attributes.values.filter(_.certified).toSeq
   def getAttributes: Seq[PersistentAttribute]                        = attributes.values.toSeq
+  def getAttributeNames: Seq[String]                                 = attributes.values.map(_.name).toSeq
 
   def getAttributeByName(name: String): Option[PersistentAttribute] =
     attributes.values.find(p => name.equalsIgnoreCase(p.name))

@@ -28,7 +28,7 @@ object AttributePersistentBehavior {
       case CreateAttribute(attribute, replyTo) => {
         Effect
           .persist(AttributeAdded(attribute))
-          .thenRun((_: State) => replyTo ! StatusReply.Success(toAPI(attribute)))
+          .thenRun((_: State) => replyTo ! (toAPI(attribute)))
       }
 
       case GetAttribute(attributeId, replyTo) => {

@@ -20,4 +20,7 @@ class AttributeApiMarshallerImpl extends AttributeApiMarshaller with SprayJsonSu
 
   implicit def toEntityMarshallerAttributeSeed: ToEntityMarshaller[AttributeSeed] = sprayJsonMarshaller[AttributeSeed]
   implicit def fromEntityUnmarshallerAttribute: FromEntityUnmarshaller[Attribute] = sprayJsonUnmarshaller[Attribute]
+
+  override implicit def fromEntityUnmarshallerAttributeSeedList: FromEntityUnmarshaller[Seq[AttributeSeed]] =
+    sprayJsonUnmarshaller[Seq[AttributeSeed]]
 }
