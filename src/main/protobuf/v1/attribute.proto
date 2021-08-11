@@ -1,0 +1,17 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  package_name: "it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.serializer.v1"
+};
+
+message AttributeV1 {
+  required string id = 1;
+  optional string code = 2;
+  optional string origin = 3;
+  required bool certified = 4;
+  required string name = 5;
+  required string description = 6;
+  required string creationTime = 7;
+}
