@@ -5,6 +5,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{
   Attribute,
   AttributeSeed,
   AttributesResponse,
+  BulkedAttributesRequest,
   Problem
 }
 import spray.json.{DefaultJsonProtocol, JsString, JsValue, JsonFormat, RootJsonFormat, deserializationError}
@@ -37,4 +38,7 @@ package object impl extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val attributeSeedFormat: RootJsonFormat[AttributeSeed]           = jsonFormat5(AttributeSeed)
   implicit val attributeFormat: RootJsonFormat[Attribute]                   = jsonFormat7(Attribute)
   implicit val attributesResponseFormat: RootJsonFormat[AttributesResponse] = jsonFormat1(AttributesResponse)
+  implicit val bulkedAttributesRequestFormat: RootJsonFormat[BulkedAttributesRequest] = jsonFormat1(
+    BulkedAttributesRequest
+  )
 }

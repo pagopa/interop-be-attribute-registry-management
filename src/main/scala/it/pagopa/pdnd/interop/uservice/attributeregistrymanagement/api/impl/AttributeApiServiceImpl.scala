@@ -134,6 +134,26 @@ class AttributeApiServiceImpl(
     getAttributes200(AttributesResponse(attributes = lazyAttributes.sortBy(_.name)))
   }
 
+  /** Code: 200, Message: array of attributes, DataType: AttributesResponse
+    */
+  override def getBulkedAttributes(
+    bulkedAttributesRequest: BulkedAttributesRequest
+  )(implicit toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]): Route = {
+
+    val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(bulkedAttributesRequest.attributes) { id =>
+      val commander: EntityRef[Command] = {
+        sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id))
+      }
+      commander.ask(ref => GetAttribute(id, ref))
+
+    }
+
+    onSuccess(result) { replies =>
+      val response = AttributesResponse(replies.filter(_.isSuccess).map(_.getValue))
+      getBulkedAttributes200(response)
+    }
+  }
+
   private def slices(commander: EntityRef[Command], sliceSize: Int): LazyList[Attribute] = {
     @tailrec
     def readSlice(
@@ -150,6 +170,7 @@ class AttributeApiServiceImpl(
         readSlice(commander, to, to + sliceSize, slice.to(LazyList) #::: lazyList)
       }
     }
+
     readSlice(commander, 0, sliceSize, LazyList.empty)
   }
 
