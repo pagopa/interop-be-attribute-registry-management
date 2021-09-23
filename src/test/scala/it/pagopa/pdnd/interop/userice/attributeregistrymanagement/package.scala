@@ -30,7 +30,7 @@ package object attributeregistrymanagement extends MockFactory {
     Await.result(Marshal(payload).to[MessageEntity].map(_.dataBytes), Duration.Inf)
 
   def createAttribute(data: Source[ByteString, Any])(implicit actorSystem: ActorSystem): HttpResponse =
-    execute("attribute", HttpMethods.POST, HttpEntity(ContentTypes.`application/json`, data))
+    execute("attributes", HttpMethods.POST, HttpEntity(ContentTypes.`application/json`, data))
 
   private def execute(path: String, verb: HttpMethod, data: RequestEntity)(implicit
     actorSystem: ActorSystem
