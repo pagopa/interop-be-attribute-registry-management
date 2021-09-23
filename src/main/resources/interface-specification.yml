@@ -19,7 +19,7 @@ tags:
   - name: health
     description: Health operations about service status
 paths:
-  '/attribute':
+  '/attributes':
     post:
       summary: Creates attribute
       tags:
@@ -46,7 +46,6 @@ paths:
             schema:
               $ref: '#/components/schemas/AttributeSeed'
         description: Contains the attribute data to save.
-  '/attributes':
     get:
       summary: 'returns the list of attributes available on the registry'
       tags:
@@ -66,6 +65,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       description: Returns the list of currently available attributes
+  '/bulk/attributes':
     post:
       summary: Creates attributes
       tags:
@@ -92,7 +92,26 @@ paths:
             schema:
               $ref: '#/components/schemas/AttributeSeeds'
         description: Contains the array of attributes data to save.
-  '/attribute/name/{name}':
+    get:
+      summary: 'returns the list of attributes for a given bulked ids request'
+      tags:
+        - attribute
+      operationId: getBulkedAttributes
+      responses:
+        '200':
+          description: array of attributes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttributesResponse'
+      description: Returns the list of attributes indicated in the request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkedAttributesRequest'
+  '/attributes/name/{name}':
     get:
       summary: Get Attribute by name
       tags:
@@ -119,7 +138,7 @@ paths:
         in: path
         required: true
         description: name of the attribute to lookup.
-  '/attribute/{attributeId}':
+  '/attributes/{attributeId}':
     get:
       summary: Get Attribute
       tags:
@@ -249,6 +268,15 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/AttributeSeed'
+    BulkedAttributesRequest:
+      type: object
+      properties:
+        attributes:
+          type: array
+          items:
+            type: string
+      required:
+        - attributes
     AttributesResponse:
       title: AttributesResponse
       type: object
