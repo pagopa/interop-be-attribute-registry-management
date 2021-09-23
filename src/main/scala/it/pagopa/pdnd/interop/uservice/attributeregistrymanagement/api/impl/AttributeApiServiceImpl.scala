@@ -137,10 +137,10 @@ class AttributeApiServiceImpl(
   /** Code: 200, Message: array of attributes, DataType: AttributesResponse
     */
   override def getBulkedAttributes(
-    bulkedAttributesRequest: BulkedAttributesRequest
+    ids: Option[String]
   )(implicit toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]): Route = {
 
-    val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(bulkedAttributesRequest.attributes) { id =>
+    val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(ids.getOrElse("").split(",").toList) { id =>
       val commander: EntityRef[Command] = {
         sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id))
       }
