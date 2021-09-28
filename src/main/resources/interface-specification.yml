@@ -51,6 +51,11 @@ paths:
       tags:
         - attribute
       operationId: getAttributes
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
       responses:
         '200':
           description: array of currently available attributes
