@@ -36,7 +36,8 @@ import scala.util.{Failure, Success}
     "org.wartremover.warts.ImplicitParameter",
     "org.wartremover.warts.Any",
     "org.wartremover.warts.Nothing",
-    "org.wartremover.warts.Recursion"
+    "org.wartremover.warts.Recursion",
+    "org.wartremover.warts.PlatformDefault"
   )
 )
 class AttributeApiServiceImpl(
@@ -119,17 +120,23 @@ class AttributeApiServiceImpl(
   /** Code: 200, Message: array of currently available attributes, DataType: AttributesByKindResponse
     * Code: 404, Message: Attributes not found, DataType: Problem
     */
-  override def getAttributes()(implicit
+  override def getAttributes(search: Option[String])(implicit
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
     val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString)
     )
+
+    def searchFn(text: String): Boolean = search.fold(true) { parameter =>
+      text.toLowerCase.contains(parameter.toLowerCase)
+    }
+
     val lazyAttributes: LazyList[Attribute] =
       commanders
         .to(LazyList)
         .flatMap(ref => slices(ref, 100))
+        .filter(attr => searchFn(attr.name))
 
     getAttributes200(AttributesResponse(attributes = lazyAttributes.sortBy(_.name)))
   }
