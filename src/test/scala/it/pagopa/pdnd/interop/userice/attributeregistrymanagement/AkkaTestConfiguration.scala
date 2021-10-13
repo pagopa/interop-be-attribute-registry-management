@@ -26,7 +26,7 @@ trait AkkaTestConfiguration {
     .parseResourcesAnySyntax("test")
     .withFallback(testData)
 
-  def serviceURL: String = config.getString("application.url")
+  def serviceURL: String = s"${config.getString("application.url")}${buildinfo.BuildInfo.interfaceVersion}"
 }
 
 object AkkaTestConfiguration extends AkkaTestConfiguration

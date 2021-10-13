@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Attributes Registry
   description: Service managing the persistence of attributes in a local registry
-  version: 0.0.1
+  version: '{{version}}'
   contact:
     name: API Support
     url: 'http://www.example.com/support'
@@ -11,7 +11,7 @@ info:
   x-api-id: an x-api-id
   x-summary: an x-summary
 servers:
-  - url: 'https://gateway.interop.pdnd.dev/pdnd-interop-uservice-attribute-registry-management/0.0.1'
+  - url: 'https://gateway.interop.pdnd.dev/pdnd-interop-uservice-attribute-registry-management/{{version}}'
     description: This service is the party manager
 tags:
   - name: attribute
