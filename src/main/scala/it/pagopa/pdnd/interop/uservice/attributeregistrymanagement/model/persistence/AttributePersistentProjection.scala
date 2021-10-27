@@ -15,7 +15,6 @@ import akka.stream.scaladsl.FlowWithContext
 
 import scala.concurrent.duration.DurationInt
 
-@SuppressWarnings(Array("org.wartremover.warts.StringPlusAny"))
 class AttributePersistentProjection(system: ActorSystem[_], entity: Entity[Command, ShardingEnvelope[Command]]) {
 
   private val settings: ClusterShardingSettings = entity.settings match {

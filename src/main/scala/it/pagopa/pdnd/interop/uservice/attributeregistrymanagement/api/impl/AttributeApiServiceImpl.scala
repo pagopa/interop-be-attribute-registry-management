@@ -31,15 +31,6 @@ import scala.util.{Failure, Success}
   * @param sharding
   * @param entity
   */
-@SuppressWarnings(
-  Array(
-    "org.wartremover.warts.ImplicitParameter",
-    "org.wartremover.warts.Any",
-    "org.wartremover.warts.Nothing",
-    "org.wartremover.warts.Recursion",
-    "org.wartremover.warts.PlatformDefault"
-  )
-)
 class AttributeApiServiceImpl(
   uuidSupplier: UUIDSupplier,
   system: ActorSystem[_],
