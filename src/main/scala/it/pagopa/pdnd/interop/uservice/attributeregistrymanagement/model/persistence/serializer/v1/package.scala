@@ -17,7 +17,6 @@ package object v1 {
 
   type ErrorOr[A] = Either[Throwable, A]
 
-  @SuppressWarnings(Array("org.wartremover.warts.Nothing"))
   implicit def stateV1PersistEventDeserializer: PersistEventDeserializer[StateV1, State] =
     state => {
 
@@ -30,7 +29,6 @@ package object v1 {
       } yield State(attributes)
     }
 
-  @SuppressWarnings(Array("org.wartremover.warts.Nothing", "org.wartremover.warts.OptionPartial"))
   implicit def stateV1PersistEventSerializer: PersistEventSerializer[State, StateV1] =
     state => {
       val entries = state.attributes.toSeq.map { case (k, v) =>

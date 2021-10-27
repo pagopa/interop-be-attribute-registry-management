@@ -23,7 +23,6 @@ class AttributeAddedSerializer extends SerializerWithStringManifest {
       serialize(event, AttributeAddedManifest, currentVersion)
   }
 
-  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef = manifest.split('|').toList match {
     case AttributeAddedManifest :: `version1` :: Nil =>
       deserialize(v1.events.AttributeAddedV1, bytes, manifest, currentVersion)
