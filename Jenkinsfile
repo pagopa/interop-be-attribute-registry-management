@@ -45,7 +45,9 @@ pipeline {
           unstash "pdnd_trust_store"
           script {
             sh '''docker login $NEXUS -u $NEXUS_CREDENTIALS_USR -p $NEXUS_CREDENTIALS_PSW'''
-            sbtAction 'test docker:publish'
+            sbtAction 'test'
+            sbtAction 'project client publish'
+            sbtAction 'docker:publish'
           }
         }
       }
@@ -54,10 +56,9 @@ pipeline {
     stage('Apply Kubernetes files') {
       agent { label 'sbt-template' }
       environment {
-        CASSANDRA = credentials('cassandra-db')
-        CASSANDRA_HOST = 'cluster1-dc1-service.cassandra-operator.svc.cluster.local:9042'
+        POSTGRES = credentials('postgres-db')
         DOCKER_REPO = 'gateway.interop.pdnd.dev'
-        //REPLICAS_NR = 1
+        REPLICAS_NR = 1
       }
       steps {
         container('sbt-container') {

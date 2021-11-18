@@ -34,6 +34,8 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.Controller
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.UUIDSupplierImpl
 import kamon.Kamon
+import slick.basic.DatabaseConfig
+import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.jdk.CollectionConverters._
@@ -68,30 +70,34 @@ object Main extends App {
 
         val sharding: ClusterSharding = ClusterSharding(context.system)
 
-        val petPersistentEntity: Entity[Command, ShardingEnvelope[Command]] = buildPersistentEntity()
+        val attributePersistentEntity: Entity[Command, ShardingEnvelope[Command]] = buildPersistentEntity()
 
-        val _ = sharding.init(petPersistentEntity)
+        val _ = sharding.init(attributePersistentEntity)
 
-        val settings: ClusterShardingSettings = petPersistentEntity.settings match {
+        val settings: ClusterShardingSettings = attributePersistentEntity.settings match {
           case None    => ClusterShardingSettings(context.system)
           case Some(s) => s
         }
 
-        val persistence = classicSystem.classicSystem.settings.config
-          .getString("pdnd-interop-uservice-attribute-registry-management.persistence")
-        if (persistence == "cassandra") {
-          val petPersistentProjection = new AttributePersistentProjection(context.system, petPersistentEntity)
+        val persistence = classicSystem.classicSystem.settings.config.getString("akka.persistence.journal.plugin")
+
+        if (persistence == "jdbc-journal") {
+          val dbConfig: DatabaseConfig[JdbcProfile] =
+            DatabaseConfig.forConfig("akka-persistence-jdbc.shared-databases.slick")
+
+          val attributePersistentProjection =
+            AttributePersistentProjection(context.system, attributePersistentEntity, dbConfig)
 
           ShardedDaemonProcess(context.system).init[ProjectionBehavior.Command](
-            name = "pet-projections",
+            name = "attribute-projections",
             numberOfInstances = settings.numberOfShards,
-            behaviorFactory = (i: Int) => ProjectionBehavior(petPersistentProjection.projections(i)),
+            behaviorFactory = (i: Int) => ProjectionBehavior(attributePersistentProjection.projections(i)),
             stopMessage = ProjectionBehavior.Stop
           )
         }
 
         val attributeApi = new AttributeApi(
-          new AttributeApiServiceImpl(uuidSupplier, context.system, sharding, petPersistentEntity),
+          new AttributeApiServiceImpl(uuidSupplier, context.system, sharding, attributePersistentEntity),
           marshallerImpl,
           SecurityDirectives.authenticateBasic("SecurityRealm", Authenticator)
         )
