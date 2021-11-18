@@ -89,7 +89,7 @@ object Main extends App {
             AttributePersistentProjection(context.system, attributePersistentEntity, dbConfig)
 
           ShardedDaemonProcess(context.system).init[ProjectionBehavior.Command](
-            name = "user-projections",
+            name = "attribute-projections",
             numberOfInstances = settings.numberOfShards,
             behaviorFactory = (i: Int) => ProjectionBehavior(attributePersistentProjection.projections(i)),
             stopMessage = ProjectionBehavior.Stop

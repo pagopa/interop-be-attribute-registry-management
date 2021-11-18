@@ -47,7 +47,7 @@ final case class AttributePersistentProjection(
     implicit val as: ActorSystem[_] = system
     SlickProjection
       .atLeastOnceFlow(
-        projectionId = ProjectionId("user-projections", tag),
+        projectionId = ProjectionId("attribute-projections", tag),
         sourceProvider = sourceProvider(tag),
         handler = flow,
         databaseConfig = dbConfig
@@ -57,7 +57,7 @@ final case class AttributePersistentProjection(
 
   val projections: Seq[AtLeastOnceFlowProjection[Offset, EventEnvelope[Event]]] =
     (0 until settings.numberOfShards).map(i =>
-      projection(s"pdnd-interop-uservice-user-registry-management-persistence-user|$i")
+      projection(s"pdnd-interop-uservice-attribute-management-persistence-user|$i")
     )
 
 }
