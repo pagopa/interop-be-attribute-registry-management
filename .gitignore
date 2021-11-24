@@ -8,6 +8,10 @@ metals.sbt
 .metals
 .bsp
 .openapi-generator
+client/src
+client/target
+generated/src
+generated/target
 .DS_Store
 client/project/build.properties
 .env

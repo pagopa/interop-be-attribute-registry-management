@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.Directives.{onComplete, onSuccess}
 import akka.http.scaladsl.server.Route
 import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
+import it.pagopa.pdnd.interop.commons.utils.service.UUIDSupplier
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.AttributeApiService
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.common.system._
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model._
@@ -18,7 +19,6 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
   toAPI
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.validation.Validation
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.UUIDSupplier
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.annotation.tailrec
@@ -49,10 +49,11 @@ class AttributeApiServiceImpl(
 
   @inline private def getShard(id: String): String = (math.abs(id.hashCode) % settings.numberOfShards).toString
 
-  /** Code: 201, Message: Attributes created, DataType: AttributesResponse
-    * Code: 400, Message: Bad Request
+  /** Code: 201, Message: Attribute created, DataType: Attribute
+    * Code: 400, Message: Bad Request, DataType: Problem
     */
   override def createAttribute(attributeSeed: AttributeSeed)(implicit
+    contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
@@ -80,6 +81,7 @@ class AttributeApiServiceImpl(
     * Code: 404, Message: Attribute not found, DataType: Problem
     */
   override def getAttributeById(attributeId: String)(implicit
+    contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
@@ -98,6 +100,7 @@ class AttributeApiServiceImpl(
     * Code: 404, Message: Attribute not found, DataType: Problem
     */
   override def getAttributeByName(name: String)(implicit
+    contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
@@ -108,10 +111,11 @@ class AttributeApiServiceImpl(
     }
   }
 
-  /** Code: 200, Message: array of currently available attributes, DataType: AttributesByKindResponse
+  /** Code: 200, Message: array of currently available attributes, DataType: AttributesResponse
     * Code: 404, Message: Attributes not found, DataType: Problem
     */
   override def getAttributes(search: Option[String])(implicit
+    contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
@@ -134,9 +138,10 @@ class AttributeApiServiceImpl(
 
   /** Code: 200, Message: array of attributes, DataType: AttributesResponse
     */
-  override def getBulkedAttributes(
-    ids: Option[String]
-  )(implicit toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]): Route = {
+  override def getBulkedAttributes(ids: Option[String])(implicit
+    contexts: Seq[(String, String)],
+    toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]
+  ): Route = {
 
     val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(ids.getOrElse("").split(",").toList) { id =>
       val commander: EntityRef[Command] = {
@@ -201,12 +206,13 @@ class AttributeApiServiceImpl(
   /** Code: 201, Message: Array of created attributes and already exising ones..., DataType: AttributesResponse
     * Code: 400, Message: Bad Request, DataType: Problem
     */
-  override def createAttributes(attributesSeed: Seq[AttributeSeed])(implicit
+  override def createAttributes(attributeSeed: Seq[AttributeSeed])(implicit
+    contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
 
-    validateAttributes(attributesSeed) match {
+    validateAttributes(attributeSeed) match {
 
       case Valid(_) => {
         //getting all the attributes already in memory
@@ -219,7 +225,7 @@ class AttributeApiServiceImpl(
             .flatMap(ref => slices(ref, 100))
 
         //calculating the delta of attributes
-        val delta = attributesSeed.foldLeft[DeltaAttributes]((Set.empty, Set.empty))((delta, seed) => {
+        val delta = attributeSeed.foldLeft[DeltaAttributes]((Set.empty, Set.empty))((delta, seed) => {
           attributesInMemory.find { persisted =>
             seed.name.equalsIgnoreCase(persisted.name)
           } match {
