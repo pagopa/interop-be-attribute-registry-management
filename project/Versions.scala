@@ -1,7 +1,7 @@
 object Versions {
   lazy val akkaHttpVersion        = "10.2.6"
   lazy val akkaManagementVersion  = "1.0.10"
-  lazy val akkaVersion            = "2.6.16"
+  lazy val akkaVersion            = "2.6.17"
   lazy val awsSdkVersion          = "2.17.56"
   lazy val catsVersion            = "2.6.0"
   lazy val httpJson4sVersion      = "1.38.2"
@@ -13,6 +13,7 @@ object Versions {
   lazy val mockitoVersion         = "3.9.0"
   lazy val mustacheVersion        = "0.9.0"
   lazy val openapi4jVersion       = "1.0.7"
+  lazy val commonsVersion         = "0.1.1-SNAPSHOT"
   lazy val projectionVersion      = "1.2.1"
   lazy val s3Persistence          = "1.0.27"
   lazy val scalaMockVersion       = "5.1.0"

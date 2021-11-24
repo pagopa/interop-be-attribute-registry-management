@@ -1,7 +1,7 @@
 package it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.attribute
 
+import it.pagopa.pdnd.interop.commons.utils.service.UUIDSupplier
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{Attribute, AttributeSeed}
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.UUIDSupplier
 
 import java.time.OffsetDateTime
 import java.util.UUID

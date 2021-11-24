@@ -14,6 +14,8 @@ import akka.management.scaladsl.AkkaManagement
 import akka.persistence.typed.PersistenceId
 import akka.projection.ProjectionBehavior
 import akka.{actor => classic}
+import it.pagopa.pdnd.interop.commons.utils.AkkaUtils.Authenticator
+import it.pagopa.pdnd.interop.commons.utils.service.impl.UUIDSupplierImpl
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl.{
   AttributeApiMarshallerImpl,
   AttributeApiServiceImpl,
@@ -21,10 +23,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl.{
   HealthServiceApiImpl
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.{AttributeApi, HealthApi}
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.common.system.{
-  ApplicationConfiguration,
-  Authenticator
-}
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.common.system.ApplicationConfiguration
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.Problem
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.{
   AttributePersistentBehavior,
@@ -32,7 +31,6 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
   Command
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.Controller
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.UUIDSupplierImpl
 import kamon.Kamon
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile

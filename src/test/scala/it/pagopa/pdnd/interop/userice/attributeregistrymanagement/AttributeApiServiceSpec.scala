@@ -10,6 +10,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.directives.SecurityDirectives
 import akka.http.scaladsl.unmarshalling.Unmarshal
+import it.pagopa.pdnd.interop.commons.utils.AkkaUtils.Authenticator
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl.{
   AttributeApiMarshallerImpl,
   AttributeApiServiceImpl
@@ -20,7 +21,6 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.{
   AttributeApiService,
   HealthApi
 }
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.common.system.Authenticator
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{Attribute, AttributeSeed, Problem}
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.Controller
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.impl.Main
