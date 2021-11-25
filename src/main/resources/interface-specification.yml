@@ -18,11 +18,11 @@ tags:
     description: Operations about party persistence and lookup
   - name: health
     description: Health operations about service status
+security:
+    - bearerAuth: [ ]
 paths:
   '/attributes':
     post:
-      security:
-        - bearerAuth: [ ]
       summary: Creates attribute
       tags:
         - attribute
@@ -49,8 +49,6 @@ paths:
               $ref: '#/components/schemas/AttributeSeed'
         description: Contains the attribute data to save.
     get:
-      security:
-        - bearerAuth: [ ]
       summary: 'returns the list of attributes available on the registry'
       tags:
         - attribute
@@ -76,8 +74,6 @@ paths:
       description: Returns the list of currently available attributes
   '/bulk/attributes':
     post:
-      security:
-        - bearerAuth: [ ]
       summary: Creates attributes
       tags:
         - attribute
@@ -104,8 +100,6 @@ paths:
               $ref: '#/components/schemas/AttributeSeeds'
         description: Contains the array of attributes data to save.
     get:
-      security:
-        - bearerAuth: [ ]
       summary: 'returns the list of attributes for a given bulked ids request'
       tags:
         - attribute
@@ -126,8 +120,6 @@ paths:
           description: 'a string representing the attribute ids concatenated by ","'
   '/attributes/name/{name}':
     get:
-      security:
-        - bearerAuth: [ ]
       summary: Get Attribute by name
       tags:
         - attribute
@@ -155,8 +147,6 @@ paths:
         description: name of the attribute to lookup.
   '/attributes/{attributeId}':
     get:
-      security:
-        - bearerAuth: [ ]
       summary: Get Attribute
       tags:
         - attribute
