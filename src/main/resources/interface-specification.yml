@@ -18,6 +18,8 @@ tags:
     description: Operations about party persistence and lookup
   - name: health
     description: Health operations about service status
+security:
+    - bearerAuth: [ ]
 paths:
   '/attributes':
     post:
@@ -283,3 +285,9 @@ components:
             $ref: '#/components/schemas/Attribute'
       required:
         - attributes
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: 'A bearer token in the format of a JWS and comformed to the specifications included in [RFC8725](https://tools.ietf.org/html/RFC8725).'
+      scheme: bearer
+      bearerFormat: JWT
