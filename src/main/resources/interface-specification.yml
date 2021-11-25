@@ -21,6 +21,8 @@ tags:
 paths:
   '/attributes':
     post:
+      security:
+        - bearerAuth: [ ]
       summary: Creates attribute
       tags:
         - attribute
@@ -47,6 +49,8 @@ paths:
               $ref: '#/components/schemas/AttributeSeed'
         description: Contains the attribute data to save.
     get:
+      security:
+        - bearerAuth: [ ]
       summary: 'returns the list of attributes available on the registry'
       tags:
         - attribute
@@ -72,6 +76,8 @@ paths:
       description: Returns the list of currently available attributes
   '/bulk/attributes':
     post:
+      security:
+        - bearerAuth: [ ]
       summary: Creates attributes
       tags:
         - attribute
@@ -98,6 +104,8 @@ paths:
               $ref: '#/components/schemas/AttributeSeeds'
         description: Contains the array of attributes data to save.
     get:
+      security:
+        - bearerAuth: [ ]
       summary: 'returns the list of attributes for a given bulked ids request'
       tags:
         - attribute
@@ -118,6 +126,8 @@ paths:
           description: 'a string representing the attribute ids concatenated by ","'
   '/attributes/name/{name}':
     get:
+      security:
+        - bearerAuth: [ ]
       summary: Get Attribute by name
       tags:
         - attribute
@@ -145,6 +155,8 @@ paths:
         description: name of the attribute to lookup.
   '/attributes/{attributeId}':
     get:
+      security:
+        - bearerAuth: [ ]
       summary: Get Attribute
       tags:
         - attribute
@@ -283,3 +295,9 @@ components:
             $ref: '#/components/schemas/Attribute'
       required:
         - attributes
+  securitySchemes:
+    bearerAuth:
+      type: http
+      description: 'A bearer token in the format of a JWS and comformed to the specifications included in [RFC8725](https://tools.ietf.org/html/RFC8725).'
+      scheme: bearer
+      bearerFormat: JWT
