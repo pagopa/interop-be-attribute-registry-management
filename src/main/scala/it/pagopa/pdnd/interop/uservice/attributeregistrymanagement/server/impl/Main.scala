@@ -97,7 +97,7 @@ object Main extends App {
         val attributeApi = new AttributeApi(
           new AttributeApiServiceImpl(uuidSupplier, context.system, sharding, attributePersistentEntity),
           marshallerImpl,
-          SecurityDirectives.authenticateBasic("SecurityRealm", Authenticator)
+          SecurityDirectives.authenticateOAuth2("SecurityRealm", Authenticator)
         )
 
         val healthApi: HealthApi = new HealthApi(
