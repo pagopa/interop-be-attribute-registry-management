@@ -1,6 +1,7 @@
 import ProjectSettings.ProjectFrom
 import com.typesafe.sbt.packager.docker.Cmd
-ThisBuild / scalaVersion := "2.13.5"
+
+ThisBuild / scalaVersion := "2.13.6"
 ThisBuild / organization := "it.pagopa"
 ThisBuild / organizationName := "Pagopa S.p.A."
 ThisBuild / libraryDependencies := Dependencies.Jars.`server`.map(m =>
@@ -12,12 +13,12 @@ ThisBuild / libraryDependencies := Dependencies.Jars.`server`.map(m =>
 ThisBuild / dependencyOverrides ++= Dependencies.Jars.overrides
 ThisBuild / version := ComputeVersion.version
 
-ThisBuild / resolvers += "Pagopa Nexus Snapshots" at s"https://gateway.interop.pdnd.dev/nexus/repository/maven-snapshots/"
-ThisBuild / resolvers += "Pagopa Nexus Releases" at s"https://gateway.interop.pdnd.dev/nexus/repository/maven-releases/"
-
 val generateCode = taskKey[Unit]("A task for generating the code starting from the swagger definition")
 
 val packagePrefix = settingKey[String]("The package prefix derived from the uservice name")
+
+ThisBuild / resolvers += "Pagopa Nexus Snapshots" at s"https://gateway.interop.pdnd.dev/nexus/repository/maven-snapshots/"
+ThisBuild / resolvers += "Pagopa Nexus Releases" at s"https://gateway.interop.pdnd.dev/nexus/repository/maven-releases/"
 
 packagePrefix := {
   name.value
@@ -39,7 +40,8 @@ generateCode := {
              |                               -p apiPackage=it.pagopa.${packagePrefix.value}.api
              |                               -p dateLibrary=java8
              |                               -p entityStrictnessTimeout=15
-             |                               -o generated""".stripMargin).!!
+             |                               -o generated
+             |                               -v""".stripMargin).!!
 
   Process(s"""openapi-generator-cli generate -t template/scala-akka-http-client
              |                               -i src/main/resources/interface-specification.yml
@@ -49,7 +51,8 @@ generateCode := {
              |                               -p modelPackage=it.pagopa.${packagePrefix.value}.client.model
              |                               -p apiPackage=it.pagopa.${packagePrefix.value}.client.api
              |                               -p dateLibrary=java8
-             |                               -o client""".stripMargin).!!
+             |                               -o client
+             |                               -v""".stripMargin).!!
 
 }
 
@@ -63,9 +66,11 @@ cleanFiles += baseDirectory.value / "client" / "src"
 
 cleanFiles += baseDirectory.value / "client" / "target"
 
+credentials += Credentials(Path.userHome / ".sbt" / ".credentials")
+
 lazy val generated = project
   .in(file("generated"))
-  .settings(scalacOptions := Seq())
+  .settings(scalacOptions := Seq(), scalafmtOnCompile := true)
   .setupBuildInfo
 
 lazy val client = project
@@ -73,14 +78,13 @@ lazy val client = project
   .settings(
     name := "pdnd-interop-uservice-attribute-registry-management-client",
     scalacOptions := Seq(),
-    scalafmtOnCompile:= true,
+    scalafmtOnCompile := true,
     libraryDependencies := Dependencies.Jars.client.map(m =>
       if (scalaVersion.value.startsWith("3.0"))
         m.withDottyCompat(scalaVersion.value)
       else
         m
     ),
-    credentials += Credentials(Path.userHome / ".sbt" / ".credentials"),
     updateOptions := updateOptions.value.withGigahorse(false),
     Docker / publish := {},
     publishTo := {
@@ -97,7 +101,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "pdnd-interop-uservice-attribute-registry-management",
     Test / parallelExecution := false,
-    scalafmtOnCompile:= true,
+    scalafmtOnCompile := true,
     dockerBuildOptions ++= Seq("--network=host"),
     dockerRepository := Some(System.getenv("DOCKER_REPO")),
     dockerBaseImage := "adoptopenjdk:11-jdk-hotspot",
