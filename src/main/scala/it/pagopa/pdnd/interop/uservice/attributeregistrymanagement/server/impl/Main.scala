@@ -14,7 +14,10 @@ import akka.management.scaladsl.AkkaManagement
 import akka.persistence.typed.PersistenceId
 import akka.projection.ProjectionBehavior
 import akka.{actor => classic}
-import it.pagopa.pdnd.interop.commons.utils.AkkaUtils.Authenticator
+import it.pagopa.pdnd.interop.commons.jwt.{JWTConfiguration, PublicKeysHolder}
+import it.pagopa.pdnd.interop.commons.jwt.service.JWTReader
+import it.pagopa.pdnd.interop.commons.jwt.service.impl.DefaultJWTReader
+import it.pagopa.pdnd.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.pdnd.interop.commons.utils.service.impl.UUIDSupplierImpl
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl.{
   AttributeApiMarshallerImpl,
@@ -37,8 +40,19 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 object Main extends App {
+
+  val dependenciesLoaded: Try[JWTReader] = for {
+    keyset <- JWTConfiguration.jwtReader.loadKeyset()
+    jwtValidator = new DefaultJWTReader with PublicKeysHolder {
+      var publicKeyset = keyset
+    }
+  } yield jwtValidator
+
+  val jwtValidator =
+    dependenciesLoaded.get //THIS IS THE END OF THE WORLD. Exceptions are welcomed here.
 
   Kamon.init()
 
@@ -97,13 +111,13 @@ object Main extends App {
         val attributeApi = new AttributeApi(
           new AttributeApiServiceImpl(uuidSupplier, context.system, sharding, attributePersistentEntity),
           marshallerImpl,
-          SecurityDirectives.authenticateOAuth2("SecurityRealm", Authenticator)
+          jwtValidator.OAuth2JWTValidatorAsContexts
         )
 
         val healthApi: HealthApi = new HealthApi(
           new HealthServiceApiImpl(),
           new HealthApiMarshallerImpl(),
-          SecurityDirectives.authenticateBasic("SecurityRealm", Authenticator)
+          SecurityDirectives.authenticateOAuth2("SecurityRealm", PassThroughAuthenticator)
         )
 
         val _ = AkkaManagement.get(classicSystem).start()
