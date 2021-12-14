@@ -14,6 +14,7 @@ postgresHost=$POSTGRES_HOST
 postgresPort=$POSTGRES_PORT
 postgresDb=$POSTGRES_DB
 postgresSchema=$POSTGRES_SCHEMA
+wellKnownURL=$WELL_KNOWN_URL
 
 replicas=$REPLICAS_NR
 

@@ -86,7 +86,8 @@ object Dependencies {
   private[this] object pagopa {
     lazy val namespace = "it.pagopa"
 
-    lazy val commons = namespace %% "pdnd-interop-commons-utils" % commonsVersion
+    lazy val commons    = namespace %% "pdnd-interop-commons-utils" % commonsVersion
+    lazy val commonsJWT = namespace %% "pdnd-interop-commons-jwt"   % commonsVersion
 
   }
 
@@ -147,6 +148,7 @@ object Dependencies {
       openapi4j.operationValidator % Compile,
       postgres.jdbc                % Compile,
       pagopa.commons               % Compile,
+      pagopa.commonsJWT            % Compile,
       scalaprotobuf.core           % Protobuf,
       akka.testkit                 % Test,
       mockito.core                 % Test,
