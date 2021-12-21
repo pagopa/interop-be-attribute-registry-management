@@ -71,7 +71,7 @@ class AttributeApiServiceImpl(
         onComplete(result) {
           case Success(attribute) => createAttribute201(attribute)
           case Failure(exception) =>
-            logger.error("Error while creating attribute {} - {}", attributeSeed.name, exception.getMessage)
+            logger.error("Error while creating attribute {}", attributeSeed.name, exception)
             createAttribute400((Problem(Option(exception.getMessage), status = 400, "Persistence error")))
         }
 
@@ -98,7 +98,7 @@ class AttributeApiServiceImpl(
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
       case statusReply if statusReply.isError =>
-        logger.error("Error while retrieving attribute {} - {}", attributeId, statusReply.getError.getMessage)
+        logger.error("Error while retrieving attribute {}", attributeId, statusReply.getError)
         getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
   }
@@ -258,7 +258,7 @@ class AttributeApiServiceImpl(
           case Success(attributeList) =>
             createAttributes201(AttributesResponse((delta._1 ++ attributeList).toList.sortBy(_.name)))
           case Failure(exception) =>
-            logger.error("Error while creating attributes set - {}", exception.getMessage)
+            logger.error("Error while creating attributes set", exception)
             createAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes saving error"))
         }
       }
