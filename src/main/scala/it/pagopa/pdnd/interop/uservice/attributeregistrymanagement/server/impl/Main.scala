@@ -76,7 +76,7 @@ object Main extends App {
 
         val cluster = Cluster(context.system)
 
-        context.log.error(
+        context.log.info(
           "Started [" + context.system + "], cluster.selfAddress = " + cluster.selfMember.address + ", build info = " + buildinfo.BuildInfo.toString + ")"
         )
 
@@ -146,7 +146,7 @@ object Main extends App {
 
         val listener = context.spawn(
           Behaviors.receive[ClusterEvent.MemberEvent]((ctx, event) => {
-            ctx.log.error("MemberEvent: {}", event)
+            ctx.log.info("MemberEvent: {}", event)
             Behaviors.same
           }),
           "listener"

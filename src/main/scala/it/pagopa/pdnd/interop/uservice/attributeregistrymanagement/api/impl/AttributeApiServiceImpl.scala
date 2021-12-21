@@ -8,6 +8,8 @@ import akka.http.scaladsl.server.Directives.{onComplete, onSuccess}
 import akka.http.scaladsl.server.Route
 import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
+import com.typesafe.scalalogging.Logger
+import it.pagopa.pdnd.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.pdnd.interop.commons.utils.service.UUIDSupplier
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.AttributeApiService
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.common.system._
@@ -19,7 +21,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
   toAPI
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.validation.Validation
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
@@ -40,7 +42,7 @@ class AttributeApiServiceImpl(
     extends AttributeApiService
     with Validation {
 
-  private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  private val logger = Logger.takingImplicit[ContextFieldsToLog](LoggerFactory.getLogger(this.getClass))
 
   private val settings: ClusterShardingSettings = entity.settings match {
     case None    => ClusterShardingSettings(system)
@@ -57,7 +59,7 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-    logger.info("Creating attributes...")
+    logger.info("Creating attribute {}", attributeSeed.name)
 
     validateAttributeName(attributeByName(attributeSeed.name)) match {
 
@@ -69,10 +71,14 @@ class AttributeApiServiceImpl(
         onComplete(result) {
           case Success(attribute) => createAttribute201(attribute)
           case Failure(exception) =>
+            logger.error("Error while creating attribute {} - {}", attributeSeed.name, exception.getMessage)
             createAttribute400((Problem(Option(exception.getMessage), status = 400, "Persistence error")))
         }
 
-      case Invalid(e) => createAttribute400(Problem(Option(e.toList.mkString(",")), status = 400, "Validation error"))
+      case Invalid(e) =>
+        val errors = e.toList.mkString(",")
+        logger.error("Error while creating attribute {} - {}", attributeSeed.name, errors)
+        createAttribute400(Problem(Option(errors), status = 400, "Validation error"))
     }
 
   }
@@ -85,13 +91,14 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-    logger.info(s"Retrieving attribute $attributeId...")
+    logger.info("Retrieving attribute {}", attributeId)
     val commander: EntityRef[Command] =
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
     val result: Future[StatusReply[Attribute]] = commander.ask(ref => GetAttribute(attributeId, ref))
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
       case statusReply if statusReply.isError =>
+        logger.error("Error while retrieving attribute {} - {}", attributeId, statusReply.getError.getMessage)
         getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
   }
@@ -104,10 +111,12 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-    logger.info(s"Retrieving attribute named $name...")
+    logger.info("Retrieving attribute named {}", name)
     attributeByName(name) match {
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
-      case None            => getAttributeByName404(Problem(Option("Attribute not found"), status = 400, "some error"))
+      case None =>
+        logger.error("Error while retrieving attribute named {} - Attribute not found", name)
+        getAttributeByName404(Problem(Option("Attribute not found"), status = 400, "some error"))
     }
   }
 
@@ -119,6 +128,7 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
+    logger.info("Retrieving attributes by search string = {}", search)
     val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString)
     )
@@ -142,7 +152,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]
   ): Route = {
-
+    logger.info("Retrieving attributes in bulk fashion by identifiers in ({})", ids)
     val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(ids.getOrElse("").split(",").toList) { id =>
       val commander: EntityRef[Command] = {
         sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id))
@@ -211,7 +221,7 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-
+    logger.info("Creating attributes set...")
     validateAttributes(attributeSeed) match {
 
       case Valid(_) => {
@@ -245,15 +255,18 @@ class AttributeApiServiceImpl(
         } yield r
 
         onComplete(result) {
-          case Success(attributeList) => {
+          case Success(attributeList) =>
             createAttributes201(AttributesResponse((delta._1 ++ attributeList).toList.sortBy(_.name)))
-          }
           case Failure(exception) =>
+            logger.error("Error while creating attributes set - {}", exception.getMessage)
             createAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes saving error"))
         }
       }
 
-      case Invalid(e) => createAttributes400(Problem(Option(e.toList.mkString(",")), status = 400, "Validation error"))
+      case Invalid(e) =>
+        val errors = e.toList.mkString(",")
+        logger.error("Error while creating attributes set - {}", errors)
+        createAttributes400(Problem(Option(errors), status = 400, "Validation error"))
     }
 
   }
