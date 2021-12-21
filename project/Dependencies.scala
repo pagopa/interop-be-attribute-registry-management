@@ -16,9 +16,12 @@ object Dependencies {
     lazy val discovery       = namespace                       %% "akka-discovery"               % akkaVersion
     lazy val discoveryKubernetesApi =
       "com.lightbend.akka.discovery" %% "akka-discovery-kubernetes-api" % akkaManagementVersion
-    lazy val http             = namespace            %% "akka-http"                    % akkaHttpVersion
-    lazy val httpJson         = namespace            %% "akka-http-spray-json"         % akkaHttpVersion
-    lazy val httpJson4s       = "de.heikoseeberger"  %% "akka-http-json4s"             % httpJson4sVersion
+    lazy val http       = namespace                       %% "akka-http"            % akkaHttpVersion
+    lazy val httpJson   = namespace                       %% "akka-http-spray-json" % akkaHttpVersion
+    lazy val httpJson4s = "de.heikoseeberger"             %% "akka-http-json4s"     % httpJson4sVersion
+    lazy val management = "com.lightbend.akka.management" %% "akka-management"      % akkaManagementVersion
+    lazy val managementLogLevels =
+      "com.lightbend.akka.management" %% "akka-management-loglevels-logback" % akkaManagementVersion
     lazy val persistence      = namespace            %% "akka-persistence-typed"       % akkaVersion
     lazy val persistenceJdbc  = "com.lightbend.akka" %% "akka-persistence-jdbc"        % jdbcPersistenceVersion
     lazy val persistenceQuery = namespace            %% "akka-persistence-query"       % akkaVersion
@@ -128,6 +131,8 @@ object Dependencies {
       akka.clusterTools            % Compile,
       akka.http                    % Compile,
       akka.httpJson                % Compile,
+      akka.management              % Compile,
+      akka.managementLogLevels     % Compile,
       akka.persistence             % Compile,
       akka.persistenceJdbc         % Compile,
       akka.persistenceQuery        % Compile,

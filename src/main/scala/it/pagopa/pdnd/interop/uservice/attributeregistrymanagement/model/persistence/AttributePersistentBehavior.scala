@@ -54,7 +54,7 @@ object AttributePersistentBehavior {
 
       case Idle =>
         shard ! ClusterSharding.Passivate(context.self)
-        context.log.error(s"Passivate shard: ${shard.path.name}")
+        context.log.info(s"Passivate shard: ${shard.path.name}")
         Effect.none[Event, State]
     }
   }
@@ -69,7 +69,7 @@ object AttributePersistentBehavior {
 
   def apply(shard: ActorRef[ClusterSharding.ShardCommand], persistenceId: PersistenceId): Behavior[Command] = {
     Behaviors.setup { context =>
-      context.log.error(
+      context.log.info(
         s"Starting Attribute" +
           s" Shard ${persistenceId.id}"
       )
