@@ -14,11 +14,11 @@ import akka.management.scaladsl.AkkaManagement
 import akka.persistence.typed.PersistenceId
 import akka.projection.ProjectionBehavior
 import akka.{actor => classic}
-import com.atlassian.oai.validator.report.ValidationReport
 import it.pagopa.pdnd.interop.commons.jwt.service.JWTReader
 import it.pagopa.pdnd.interop.commons.jwt.service.impl.DefaultJWTReader
 import it.pagopa.pdnd.interop.commons.jwt.{JWTConfiguration, PublicKeysHolder}
 import it.pagopa.pdnd.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
+import it.pagopa.pdnd.interop.commons.utils.OpenapiUtils
 import it.pagopa.pdnd.interop.commons.utils.service.impl.UUIDSupplierImpl
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl.{
   AttributeApiMarshallerImpl,
@@ -36,18 +36,13 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.Controller
 import kamon.Kamon
-import org.slf4j.LoggerFactory
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
 import scala.util.Try
 
 object Main extends App {
-
-  private val logger = LoggerFactory.getLogger(this.getClass)
 
   val dependenciesLoaded: Try[JWTReader] = for {
     keyset <- JWTConfiguration.jwtReader.loadKeyset()
@@ -131,7 +126,7 @@ object Main extends App {
           attributeApi,
           healthApi,
           validationExceptionToRoute = Some(report => {
-            val message = errorFromRequestValidationReport(report)
+            val message = OpenapiUtils.errorFromRequestValidationReport(report)
             complete(400, Problem(Some(message), 400, "bad request"))(marshallerImpl.toEntityMarshallerProblem)
           })
         )
@@ -154,20 +149,5 @@ object Main extends App {
       },
       "pdnd-interop-uservice-attribute-registry-management"
     )
-  }
-
-  private def errorFromRequestValidationReport(report: ValidationReport): String = {
-    val messageStrings = report.getMessages.asScala.foldLeft[List[String]](List.empty)((tail, m) => {
-      val context = m.getContext.toScala.map(c =>
-        Seq(c.getRequestMethod.toScala, c.getRequestPath.toScala, c.getLocation.toScala).flatten
-      )
-      s"""${m.getAdditionalInfo.asScala.mkString(",")}
-         |${m.getLevel} - ${m.getMessage}
-         |${context.getOrElse(Seq.empty).mkString(" - ")}
-         |""".stripMargin :: tail
-    })
-
-    logger.error("Request failed: {}", messageStrings.mkString)
-    report.getMessages().asScala.map(_.getMessage).mkString(", ")
   }
 }
