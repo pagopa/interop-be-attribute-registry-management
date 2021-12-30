@@ -22,6 +22,7 @@ import org.json4s.jackson.Serialization
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, ExecutionContextExecutor, Future }
 import scala.reflect.ClassTag
+import scala.util.{Success, Failure}
 
 object ApiInvoker {
 def apply()(implicit system: ActorSystem): ApiInvoker =
@@ -124,102 +125,113 @@ Multipart.FormData(Source(params.toList.map { case (name, value) => bodyPart(nam
 }
 )
 }
-private def bodyContent(request: ApiRequest[_]): Option[Any] = request
-.bodyParam
-.map(Extraction.decompose)
-.map(compact)
-private def createRequest(uri: Uri, request: ApiRequest[_]): HttpRequest = {
-val httpRequest = request.method.toAkkaHttpMethod match {
-case m@(HttpMethods.GET | HttpMethods.DELETE) => HttpRequest(m, uri)
-case m@(HttpMethods.POST | HttpMethods.PUT | HttpMethods.PATCH) =>
-formDataContent(request) orElse bodyContent(request) match {
-case Some(c: FormData) =>
-HttpRequest(m, uri, entity = c.toEntity)
-case Some(c: Multipart.FormData) =>
-HttpRequest(m, uri, entity = c.toEntity)
-case Some(c: String) =>
-HttpRequest(m, uri, entity = HttpEntity(normalizedContentType(request.contentType), ByteString(c)))
-case _ =>
-HttpRequest(m, uri, entity = HttpEntity(normalizedContentType(request.contentType), ByteString(" ")))
-}
-case m: HttpMethod => HttpRequest(m, uri)
-}
-addAuthentication(request.credentials)(
-httpRequest.withHeaders(headers(request.headerParams))
-)
-}
-def makeQuery(r: ApiRequest[_]): Query = {
-r.credentials.foldLeft(r.queryParams) {
-case (params, ApiKeyCredentials(key, keyName, ApiKeyLocations.QUERY)) =>
-params + (keyName -> key.value)
-case (params, _) => params
-}.asFormattedParams
-.mapValues(_.toString)
-.foldRight[Query](Uri.Query.Empty) {
-case ((name, value), acc) => acc.+:(name, value)
-}
-}
-def makeUri(r: ApiRequest[_]): Uri = {
-val opPath = r.operationPath.replaceAll("\\{format\\}", "json")
-val opPathWithParams = r.pathParams.asFormattedParams
-.mapValues(_.toString)
-.foldLeft(opPath) {
-case (path, (name, value)) => path.replaceAll(s"\\{$name\\}", value)
-}
-val query = makeQuery(r)
-Uri(r.basePath + opPathWithParams).withQuery(query)
-}
-def execute[T: Manifest](r: ApiRequest[T]): Future[ApiResponse[T]] = {
-implicit val timeout: Timeout = settings.connectionTimeout
-val request = createRequest(makeUri(r), r)
-http
-.singleRequest(request)
-.map { response =>
-val decoder: Coder with StreamDecoder = response.encoding match {
-case HttpEncodings.gzip ⇒
-Gzip
-case HttpEncodings.deflate ⇒
-Deflate
-case HttpEncodings.identity ⇒
-NoCoding
-case HttpEncoding(encoding) =>
-throw new IllegalArgumentException(s"Unsupported encoding: $encoding")
-}
-decoder.decodeMessage(response)
-}
-.flatMap(unmarshallApiResponse(r))
-}
-def unmarshallApiResponse[T: Manifest](request: ApiRequest[T])(response: HttpResponse): Future[ApiResponse[T]] = {
-def responseForState[V](state: ResponseState, value: V): ApiResponse[V] = {
-state match {
-case ResponseState.Success =>
-ApiResponse(response.status.intValue, value, response.headers.map(header => (header.name, header.value)).toMap)
-case ResponseState.Error =>
-throw ApiError(
-response.status.intValue,
-"Error response received",
-Some(value),
-headers = response.headers.map(header => (header.name, header.value)).toMap
-)
-}
-}
-val mf = implicitly(manifest[T])
-request
-.responseForCode(response.status.intValue) match {
-case Some((Manifest.Unit, state: ResponseState)) =>
-Future(responseForState(state, ()).asInstanceOf[ApiResponse[T]])
-case Some((manifest, state: ResponseState)) if manifest == mf =>
-implicit val m: Unmarshaller[HttpEntity, T] = unmarshaller[T](mf, serialization, formats)
-Unmarshal(response.entity)
-.to[T]
-.recoverWith {
-case e ⇒ throw ApiError(response.status.intValue, s"Unable to unmarshall content to [$manifest]", Some(response.entity.toString), e)
-}
-.map(value => responseForState(state, value))
-case None | Some(_) =>
-Future.failed(ApiError(response.status.intValue, "Unexpected response code", Some(response.entity.toString)))
-}
-}
+  private def bodyContent(request: ApiRequest[_]): Option[Any] = request
+    .bodyParam
+    .map(Extraction.decompose)
+    .map(compact)
+  private def createRequest(uri: Uri, request: ApiRequest[_]): HttpRequest = {
+    val httpRequest = request.method.toAkkaHttpMethod match {
+      case m@(HttpMethods.GET | HttpMethods.DELETE) => HttpRequest(m, uri)
+      case m@(HttpMethods.POST | HttpMethods.PUT | HttpMethods.PATCH) =>
+        formDataContent(request) orElse bodyContent(request) match {
+          case Some(c: FormData) =>
+            HttpRequest(m, uri, entity = c.toEntity)
+          case Some(c: Multipart.FormData) =>
+            HttpRequest(m, uri, entity = c.toEntity)
+          case Some(c: String) =>
+            HttpRequest(m, uri, entity = HttpEntity(normalizedContentType(request.contentType), ByteString(c)))
+          case _ =>
+            HttpRequest(m, uri, entity = HttpEntity(normalizedContentType(request.contentType), ByteString(" ")))
+        }
+      case m: HttpMethod => HttpRequest(m, uri)
+    }
+    addAuthentication(request.credentials)(
+      httpRequest.withHeaders(headers(request.headerParams))
+    )
+  }
+  def makeQuery(r: ApiRequest[_]): Query = {
+    r.credentials.foldLeft(r.queryParams) {
+      case (params, ApiKeyCredentials(key, keyName, ApiKeyLocations.QUERY)) =>
+        params + (keyName -> key.value)
+      case (params, _) => params
+    }.asFormattedParams
+      .mapValues(_.toString)
+      .foldRight[Query](Uri.Query.Empty) {
+      case ((name, value), acc) => acc.+:(name, value)
+    }
+  }
+  def makeUri(r: ApiRequest[_]): Uri = {
+    val opPath = r.operationPath.replaceAll("\\{format\\}", "json")
+    val opPathWithParams = r.pathParams.asFormattedParams
+      .mapValues(_.toString)
+      .foldLeft(opPath) {
+        case (path, (name, value)) => path.replaceAll(s"\\{$name\\}", value)
+      }
+    val query = makeQuery(r)
+    Uri(r.basePath + opPathWithParams).withQuery(query)
+  }
+  def execute[T: Manifest](r: ApiRequest[T]): Future[ApiResponse[T]] = {
+    implicit val timeout: Timeout = settings.connectionTimeout
+    val request = createRequest(makeUri(r), r)
+    http
+      .singleRequest(request)
+      .map { response =>
+        val decoder: Coder with StreamDecoder = response.encoding match {
+          case HttpEncodings.gzip ⇒
+            Gzip
+          case HttpEncodings.deflate ⇒
+            Deflate
+          case HttpEncodings.identity ⇒
+            NoCoding
+          case HttpEncoding(encoding) =>
+            throw new IllegalArgumentException(s"Unsupported encoding: $encoding")
+        }
+        decoder.decodeMessage(response)
+      }
+      .flatMap(unmarshallApiResponse(r))
+  }
+  def unmarshallApiResponse[T: Manifest](request: ApiRequest[T])(response: HttpResponse): Future[ApiResponse[T]] = {
+    def responseForState[V](state: ResponseState, value: V): ApiResponse[V] = {
+      state match {
+        case ResponseState.Success =>
+          ApiResponse(response.status.intValue, value, response.headers.map(header => (header.name, header.value)).toMap)
+        case ResponseState.Error =>
+          throw ApiError(
+            response.status.intValue,
+            "Error response received",
+            Some(value),
+            headers = response.headers.map(header => (header.name, header.value)).toMap
+          )
+      }
+    }
+    val mf = implicitly(manifest[T])
+    request
+      .responseForCode(response.status.intValue) match {
+      case Some((Manifest.Unit, state: ResponseState)) =>
+        Future(responseForState(state, ()).asInstanceOf[ApiResponse[T]])
+      case Some((manifest, state: ResponseState)) if manifest == mf =>
+        implicit val m: Unmarshaller[HttpEntity, T] = unmarshaller[T](mf, serialization, formats)
+        Unmarshal(response.entity)
+          .to[T]
+          .recoverWith {
+            case e =>
+            Unmarshaller.stringUnmarshaller(response.entity).transformWith {
+                case Success(st) =>
+                  throw ApiError(response.status.intValue, s"Unable to unmarshall content to [$manifest]", Some(st), e)
+                case Failure(ex) =>
+                  throw ApiError(response.status.intValue, s"Unable to unmarshall content to [$manifest]", Some(ex.getMessage), e)
+            }
+          }
+          .map(value => responseForState(state, value))
+      case None | Some(_) =>
+        Unmarshaller.stringUnmarshaller(response.entity).transformWith {
+                  case Success(st) =>
+                    Future.failed(ApiError(response.status.intValue, response.status.defaultMessage, Some(st)))
+                  case Failure(ex) =>
+                    Future.failed(ApiError(response.status.intValue, response.status.defaultMessage, Some(ex.getMessage)))
+         }
+    }
+  }
 }
 sealed trait CustomContentTypes {
 protected def normalizedContentType(original: String): ContentType =
