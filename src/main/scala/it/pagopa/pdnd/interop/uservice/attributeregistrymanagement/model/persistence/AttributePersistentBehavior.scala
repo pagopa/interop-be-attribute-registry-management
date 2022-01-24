@@ -47,10 +47,13 @@ object AttributePersistentBehavior {
         Effect.none[Event, State]
       }
 
-      case GetAttributeByName(name, replyTo) => {
+      case GetAttributeByName(name, replyTo) =>
         replyTo ! state.getAttributeByName(name)
         Effect.none[Event, State]
-      }
+
+      case GetAttributeByInfo(attributeInfo, replyTo) =>
+        replyTo ! state.getAttributeByAttributeInfo(attributeInfo)
+        Effect.none[Event, State]
 
       case Idle =>
         shard ! ClusterSharding.Passivate(context.self)

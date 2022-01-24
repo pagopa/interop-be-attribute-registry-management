@@ -146,4 +146,55 @@ class AttributeApiServiceSpec
     }
   }
 
+  "find an attribute by name" in {
+    //given
+    val mockUUID = UUID.randomUUID()
+    (() => uuidSupplier.get).expects().returning(mockUUID).once()
+
+    //when
+    val requestPayload = AttributeSeed(
+      code = Some("999"),
+      certified = true,
+      description = "this is a test",
+      origin = Some("IPA"),
+      name = "Murubutu"
+    )
+    createAttribute(buildPayload(requestPayload))
+
+    //then
+    val response = findAttributeByName("Murubutu")
+    val body     = Await.result(Unmarshal(response.entity).to[Attribute], Duration.Inf)
+    response.status shouldBe StatusCodes.OK
+    body.name shouldBe "Murubutu"
+    body.certified shouldBe true
+    body.code.get shouldBe "999"
+    body.description shouldBe "this is a test"
+    body.origin.get shouldBe "IPA"
+  }
+
+  "find an attribute by origin and code" in {
+    //given
+    val mockUUID = UUID.randomUUID()
+    (() => uuidSupplier.get).expects().returning(mockUUID).once()
+
+    //when
+    val requestPayload = AttributeSeed(
+      code = Some("1984"),
+      certified = true,
+      description = "Il coraggio dei piuma",
+      origin = Some("IPA"),
+      name = "Valentina Dorme"
+    )
+    createAttribute(buildPayload(requestPayload))
+
+    //then
+    val response = findAttributeByOriginAndCode("IPA", "1984")
+    val body     = Await.result(Unmarshal(response.entity).to[Attribute], Duration.Inf)
+    response.status shouldBe StatusCodes.OK
+    body.name shouldBe "Valentina Dorme"
+    body.certified shouldBe true
+    body.code.get shouldBe "1984"
+    body.description shouldBe "Il coraggio dei piuma"
+    body.origin.get shouldBe "IPA"
+  }
 }

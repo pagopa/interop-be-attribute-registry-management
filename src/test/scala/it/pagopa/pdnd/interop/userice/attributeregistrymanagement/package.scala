@@ -32,6 +32,30 @@ package object attributeregistrymanagement extends MockFactory {
   def createAttribute(data: Source[ByteString, Any])(implicit actorSystem: ActorSystem): HttpResponse =
     execute("attributes", HttpMethods.POST, HttpEntity(ContentTypes.`application/json`, data))
 
+  def findAttributeByName(name: String)(implicit actorSystem: ActorSystem): HttpResponse =
+    Await.result(
+      Http().singleRequest(
+        HttpRequest(
+          uri = s"${AkkaTestConfiguration.serviceURL}/attributes/name/$name",
+          method = HttpMethods.GET,
+          headers = authorization
+        )
+      ),
+      Duration.Inf
+    )
+
+  def findAttributeByOriginAndCode(origin: String, code: String)(implicit actorSystem: ActorSystem): HttpResponse =
+    Await.result(
+      Http().singleRequest(
+        HttpRequest(
+          uri = s"${AkkaTestConfiguration.serviceURL}/attributes/origin/$origin/code/$code",
+          method = HttpMethods.GET,
+          headers = authorization
+        )
+      ),
+      Duration.Inf
+    )
+
   private def execute(path: String, verb: HttpMethod, data: RequestEntity)(implicit
     actorSystem: ActorSystem
   ): HttpResponse = {

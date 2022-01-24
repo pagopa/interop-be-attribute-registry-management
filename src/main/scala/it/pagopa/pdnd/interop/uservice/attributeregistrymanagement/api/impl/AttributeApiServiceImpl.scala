@@ -1,6 +1,6 @@
 package it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
 import akka.http.scaladsl.marshalling.ToEntityMarshaller
@@ -61,7 +61,7 @@ class AttributeApiServiceImpl(
   ): Route = {
     logger.info("Creating attribute {}", attributeSeed.name)
 
-    validateAttributeName(attributeByName(attributeSeed.name)) match {
+    validateAttributeName(attributeBy(attributeSeed.name, GetAttributeByName)) match {
 
       case Valid(_) =>
         val persistentAttribute = fromSeed(attributeSeed, uuidSupplier)
@@ -112,7 +112,7 @@ class AttributeApiServiceImpl(
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
     logger.info("Retrieving attribute named {}", name)
-    attributeByName(name) match {
+    attributeBy(name, GetAttributeByName) match {
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
       case None =>
         logger.error("Error while retrieving attribute named {} - Attribute not found", name)
@@ -187,26 +187,30 @@ class AttributeApiServiceImpl(
     readSlice(commander, 0, sliceSize, LazyList.empty)
   }
 
-  private def attributeByName(name: String): Option[PersistentAttribute] = {
+  private def attributeBy[T](
+    parameter: T,
+    f: (T, ActorRef[Option[PersistentAttribute]]) => Command
+  ): Option[PersistentAttribute] = {
     val commanders: List[EntityRef[Command]] =
       (0 until settings.numberOfShards)
         .map(shard => sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString))
         .toList
 
-    recursiveLookup(commanders, name)
+    recursiveLookup(commanders, parameter, f)
   }
 
   @tailrec
-  private def recursiveLookup(
+  private def recursiveLookup[T](
     commanders: List[EntityRef[Command]],
-    attributeName: String
+    parameter: T,
+    f: (T, ActorRef[Option[PersistentAttribute]]) => Command
   ): Option[PersistentAttribute] = {
     commanders match {
       case Nil => None
       case elem :: tail =>
-        Await.result(elem.ask(ref => GetAttributeByName(attributeName, ref)), Duration.Inf) match {
+        Await.result(elem.ask((ref: ActorRef[Option[PersistentAttribute]]) => f(parameter, ref)), Duration.Inf) match {
           case Some(attribute) => Some(attribute)
-          case None            => recursiveLookup(tail, attributeName)
+          case None            => recursiveLookup(tail, parameter, f)
         }
     }
   }
@@ -269,5 +273,22 @@ class AttributeApiServiceImpl(
         createAttributes400(Problem(Option(errors), status = 400, "Validation error"))
     }
 
+  }
+
+  /** Code: 200, Message: Attribute data, DataType: Attribute
+    * Code: 404, Message: Attribute not found, DataType: Problem
+    */
+  override def getAttributeByOriginAndCode(origin: String, code: String)(implicit
+    contexts: Seq[(String, String)],
+    toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
+    toEntityMarshallerProblem: ToEntityMarshaller[Problem]
+  ): Route = {
+    logger.info("Retrieving attribute having origin {} and code {}", origin, code)
+    attributeBy(AttributeInfo(origin, code), GetAttributeByInfo) match {
+      case Some(attribute) => getAttributeByOriginAndCode200(toAPI(attribute))
+      case None =>
+        logger.error("Error while retrieving attribute having origin {} and code {} - not found", origin, code)
+        getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 400, "some error"))
+    }
   }
 }
