@@ -210,7 +210,7 @@ class AttributeApiServiceImpl(
       case elem :: tail =>
         Await.result(elem.ask((ref: ActorRef[Option[PersistentAttribute]]) => f(parameter, ref)), Duration.Inf) match {
           case Some(attribute) => Some(attribute)
-          case None            => recursiveLookup(tail, parameter, f)
+          case None            => recursiveLookup[T](tail, parameter, f)
         }
     }
   }
