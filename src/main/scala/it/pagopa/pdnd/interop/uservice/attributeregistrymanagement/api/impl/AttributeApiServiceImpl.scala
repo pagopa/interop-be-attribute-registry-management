@@ -116,7 +116,7 @@ class AttributeApiServiceImpl(
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
       case None =>
         logger.error("Error while retrieving attribute named {} - Attribute not found", name)
-        getAttributeByName404(Problem(Option("Attribute not found"), status = 400, "some error"))
+        getAttributeByName404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
     }
   }
 
@@ -288,7 +288,7 @@ class AttributeApiServiceImpl(
       case Some(attribute) => getAttributeByOriginAndCode200(toAPI(attribute))
       case None =>
         logger.error("Error while retrieving attribute having origin {} and code {} - not found", origin, code)
-        getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 400, "some error"))
+        getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
     }
   }
 }
