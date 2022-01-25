@@ -171,13 +171,13 @@ paths:
         name: origin
         in: path
         required: true
-        description: "origin of the attribute to lookup (e.g.: IPA)."
+        description: 'origin of the attribute to lookup (e.g.: IPA).'
       - schema:
           type: string
         name: code
         in: path
         required: true
-        description: "code of the attribute to lookup (e.g.: unique identifier of IPA)."
+        description: 'code of the attribute to lookup (e.g.: unique identifier of IPA).'
   '/attributes/{attributeId}':
     get:
       summary: Get Attribute

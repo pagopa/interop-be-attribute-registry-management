@@ -28,7 +28,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import java.util.UUID
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
 class AttributeApiServiceSpec
@@ -101,7 +101,7 @@ class AttributeApiServiceSpec
         name = "test"
       )
       val response = createAttribute(buildPayload(requestPayload))
-      val body     = Await.result(Unmarshal(response.entity).to[Attribute], Duration.Inf)
+      val body     = Unmarshal(response.entity).to[Attribute].futureValue
 
       //then
       response.status shouldBe StatusCodes.Created
@@ -138,7 +138,7 @@ class AttributeApiServiceSpec
         name = "pippo"
       )
       val response = createAttribute(buildPayload(requestPayloadNew))
-      val problem  = Await.result(Unmarshal(response.entity).to[Problem], Duration.Inf)
+      val problem  = Unmarshal(response.entity).to[Problem].futureValue
 
       //then
       response.status shouldBe StatusCodes.BadRequest
@@ -155,20 +155,20 @@ class AttributeApiServiceSpec
     val requestPayload = AttributeSeed(
       code = Some("999"),
       certified = true,
-      description = "this is a test",
+      description = "Bar Foo",
       origin = Some("IPA"),
-      name = "Murubutu"
+      name = "BarFoo"
     )
     createAttribute(buildPayload(requestPayload))
 
     //then
     val response = findAttributeByName("Murubutu")
-    val body     = Await.result(Unmarshal(response.entity).to[Attribute], Duration.Inf)
+    val body     = Unmarshal(response.entity).to[Attribute].futureValue
     response.status shouldBe StatusCodes.OK
-    body.name shouldBe "Murubutu"
+    body.name shouldBe "BarFoo"
     body.certified shouldBe true
     body.code.get shouldBe "999"
-    body.description shouldBe "this is a test"
+    body.description shouldBe "Bar Foo"
     body.origin.get shouldBe "IPA"
   }
 
@@ -181,20 +181,20 @@ class AttributeApiServiceSpec
     val requestPayload = AttributeSeed(
       code = Some("1984"),
       certified = true,
-      description = "Il coraggio dei piuma",
+      description = "Foo bar",
       origin = Some("IPA"),
-      name = "Valentina Dorme"
+      name = "FooBar"
     )
     createAttribute(buildPayload(requestPayload))
 
     //then
     val response = findAttributeByOriginAndCode("IPA", "1984")
-    val body     = Await.result(Unmarshal(response.entity).to[Attribute], Duration.Inf)
+    val body     = Unmarshal(response.entity).to[Attribute].futureValue
     response.status shouldBe StatusCodes.OK
-    body.name shouldBe "Valentina Dorme"
+    body.name shouldBe "FooBar"
     body.certified shouldBe true
     body.code.get shouldBe "1984"
-    body.description shouldBe "Il coraggio dei piuma"
+    body.description shouldBe "Foo bar"
     body.origin.get shouldBe "IPA"
   }
 }

@@ -61,7 +61,7 @@ class AttributeApiServiceImpl(
   ): Route = {
     logger.info("Creating attribute {}", attributeSeed.name)
 
-    validateAttributeName(attributeBy(attributeSeed.name, GetAttributeByName)) match {
+    validateAttributeName(attributeByCommand(GetAttributeByName, attributeSeed.name)) match {
 
       case Valid(_) =>
         val persistentAttribute = fromSeed(attributeSeed, uuidSupplier)
@@ -112,7 +112,7 @@ class AttributeApiServiceImpl(
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
     logger.info("Retrieving attribute named {}", name)
-    attributeBy(name, GetAttributeByName) match {
+    attributeByCommand(GetAttributeByName, name) match {
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
       case None =>
         logger.error("Error while retrieving attribute named {} - Attribute not found", name)
@@ -187,9 +187,9 @@ class AttributeApiServiceImpl(
     readSlice(commander, 0, sliceSize, LazyList.empty)
   }
 
-  private def attributeBy[T](
-    parameter: T,
-    f: (T, ActorRef[Option[PersistentAttribute]]) => Command
+  private def attributeByCommand[T](
+    f: (T, ActorRef[Option[PersistentAttribute]]) => Command,
+    parameter: T
   ): Option[PersistentAttribute] = {
     val commanders: List[EntityRef[Command]] =
       (0 until settings.numberOfShards)
@@ -284,7 +284,7 @@ class AttributeApiServiceImpl(
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
     logger.info("Retrieving attribute having origin {} and code {}", origin, code)
-    attributeBy(AttributeInfo(origin, code), GetAttributeByInfo) match {
+    attributeByCommand(GetAttributeByInfo, AttributeInfo(origin, code)) match {
       case Some(attribute) => getAttributeByOriginAndCode200(toAPI(attribute))
       case None =>
         logger.error("Error while retrieving attribute having origin {} and code {} - not found", origin, code)
