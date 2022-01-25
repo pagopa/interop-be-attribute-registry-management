@@ -15,6 +15,7 @@ postgresPort=$POSTGRES_PORT
 postgresDb=$POSTGRES_DB
 postgresSchema=$POSTGRES_SCHEMA
 wellKnownURL=$WELL_KNOWN_URL
+partyProxyVersion="0.1"
 partyProxyUrl="http://pdnd-interop-uservice-party-registry-proxy.pdnd-interop-uservice-party-registry-proxy.svc.cluster.local:8088/pdnd-interop-uservice-party-registry-proxy/"$partyProxyVersion
 
 replicas=$REPLICAS_NR
