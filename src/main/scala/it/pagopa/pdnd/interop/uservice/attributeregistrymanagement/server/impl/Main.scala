@@ -19,7 +19,7 @@ import it.pagopa.pdnd.interop.commons.jwt.service.impl.DefaultJWTReader
 import it.pagopa.pdnd.interop.commons.jwt.{JWTConfiguration, PublicKeysHolder}
 import it.pagopa.pdnd.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.pdnd.interop.commons.utils.OpenapiUtils
-import it.pagopa.pdnd.interop.commons.utils.service.impl.UUIDSupplierImpl
+import it.pagopa.pdnd.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl.{
   AttributeApiMarshallerImpl,
   AttributeApiServiceImpl,
@@ -35,6 +35,9 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
   Command
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.Controller
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.PartyRegistryServiceImpl
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.{PartyProxyInvoker, PartyRegistryService}
+import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.api.InstitutionApi
 import kamon.Kamon
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -108,8 +111,18 @@ object Main extends App {
           )
         }
 
+        val partyProcessService: PartyRegistryService =
+          PartyRegistryServiceImpl(PartyProxyInvoker(), InstitutionApi(ApplicationConfiguration.partyProxyUrl))
+
         val attributeApi = new AttributeApi(
-          new AttributeApiServiceImpl(uuidSupplier, context.system, sharding, attributePersistentEntity),
+          new AttributeApiServiceImpl(
+            uuidSupplier,
+            OffsetDateTimeSupplierImpl,
+            context.system,
+            sharding,
+            attributePersistentEntity,
+            partyProcessService
+          ),
           marshallerImpl,
           jwtValidator.OAuth2JWTValidatorAsContexts
         )

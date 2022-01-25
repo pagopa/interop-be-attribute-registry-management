@@ -145,6 +145,22 @@ paths:
         in: path
         required: true
         description: name of the attribute to lookup.
+  /jobs/attributes/certified/load:
+    post:
+      summary: Certified attributes upload
+      tags:
+        - attribute
+      responses:
+        '201':
+          description: Attributes loaded
+        '400':
+          description: Bad request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      operationId: loadCertifiedAttributes
+      description: 'Loads certified attributes on this registry.'
   '/attributes/origin/{origin}/code/{code}':
     get:
       summary: Get Attribute by origin and code

@@ -1,6 +1,6 @@
 package it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.attribute
 
-import it.pagopa.pdnd.interop.commons.utils.service.UUIDSupplier
+import it.pagopa.pdnd.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{Attribute, AttributeSeed}
 
 import java.time.OffsetDateTime
@@ -31,7 +31,11 @@ object PersistentAttribute {
     )
   }
 
-  def fromSeed(seed: AttributeSeed, uuidSupplier: UUIDSupplier): PersistentAttribute = {
+  def fromSeed(
+    seed: AttributeSeed,
+    uuidSupplier: UUIDSupplier,
+    timeSupplier: OffsetDateTimeSupplier
+  ): PersistentAttribute = {
     PersistentAttribute(
       id = uuidSupplier.get,
       code = seed.code,
@@ -39,7 +43,7 @@ object PersistentAttribute {
       description = seed.description,
       origin = seed.origin,
       name = seed.name,
-      creationTime = OffsetDateTime.now()
+      creationTime = timeSupplier.get
     )
   }
 

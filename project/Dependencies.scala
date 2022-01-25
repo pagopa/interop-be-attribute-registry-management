@@ -1,5 +1,5 @@
-import Versions._
 import PDNDVersions._
+import Versions._
 import sbt._
 
 object Dependencies {
@@ -84,6 +84,9 @@ object Dependencies {
   private[this] object pagopa {
     lazy val namespace = "it.pagopa"
 
+    lazy val partyProxyClient =
+      namespace %% "pdnd-interop-uservice-party-registry-proxy-client" % partyProxyVersion
+
     lazy val commons    = namespace %% "pdnd-interop-commons-utils" % commonsVersion
     lazy val commonsJWT = namespace %% "pdnd-interop-commons-jwt"   % commonsVersion
 
@@ -92,11 +95,6 @@ object Dependencies {
   private[this] object scalatest {
     lazy val namespace = "org.scalatest"
     lazy val core      = namespace %% "scalatest" % scalatestVersion
-  }
-
-  private[this] object mockito {
-    lazy val namespace = "org.mockito"
-    lazy val core      = namespace % "mockito-core" % mockitoVersion
   }
 
   private[this] object scalamock {
@@ -148,9 +146,9 @@ object Dependencies {
       postgres.jdbc               % Compile,
       pagopa.commons              % Compile,
       pagopa.commonsJWT           % Compile,
+      pagopa.partyProxyClient     % Compile,
       scalaprotobuf.core          % Protobuf,
       akka.testkit                % Test,
-      mockito.core                % Test,
       scalamock.core              % Test,
       scalatest.core              % Test
     )

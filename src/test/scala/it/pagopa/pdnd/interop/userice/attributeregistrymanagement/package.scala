@@ -8,16 +8,26 @@ import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import it.pagopa.pdnd.interop.commons.utils.service.UUIDSupplier
+import it.pagopa.pdnd.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl._
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{Attribute, AttributeSeed, Problem}
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.PartyRegistryService
+import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.model.{Categories, Category}
 import org.scalamock.scalatest.MockFactory
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext}
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 package object attributeregistrymanagement extends MockFactory {
-  val uuidSupplier: UUIDSupplier              = mock[UUIDSupplier]
+  val uuidSupplier: UUIDSupplier                     = mock[UUIDSupplier]
+  val timeSupplier: OffsetDateTimeSupplier           = mock[OffsetDateTimeSupplier]
+  val mockPartyRegistryService: PartyRegistryService = mock[PartyRegistryService]
+
+  (mockPartyRegistryService.getCategories _)
+    .expects(*)
+    .returning(Future.successful(Categories(Seq(Category("YADA", "Proxied", "test", "IPA")))))
+    .anyNumberOfTimes()
+
   final val authorization: Seq[Authorization] = Seq(headers.Authorization(OAuth2BearerToken("token")))
 
   implicit def toEntityMarshallerAttributeSeed: ToEntityMarshaller[AttributeSeed] = sprayJsonMarshaller[AttributeSeed]
@@ -31,6 +41,18 @@ package object attributeregistrymanagement extends MockFactory {
 
   def createAttribute(data: Source[ByteString, Any])(implicit actorSystem: ActorSystem): HttpResponse =
     execute("attributes", HttpMethods.POST, HttpEntity(ContentTypes.`application/json`, data))
+
+  def loadAttributes(implicit actorSystem: ActorSystem): HttpResponse =
+    Await.result(
+      Http().singleRequest(
+        HttpRequest(
+          uri = s"${AkkaTestConfiguration.serviceURL}/jobs/attributes/certified/load",
+          method = HttpMethods.POST,
+          headers = authorization
+        )
+      ),
+      Duration.Inf
+    )
 
   def findAttributeByName(name: String)(implicit actorSystem: ActorSystem): HttpResponse =
     Await.result(
