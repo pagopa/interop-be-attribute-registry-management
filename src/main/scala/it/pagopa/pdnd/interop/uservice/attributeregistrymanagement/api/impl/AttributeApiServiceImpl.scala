@@ -214,7 +214,14 @@ class AttributeApiServiceImpl(
     }
   }
 
-  type DeltaAttributes = (Set[Attribute], Set[AttributeSeed])
+  case class DeltaAttributes(attributes: Set[Attribute], seeds: Set[AttributeSeed]) {
+    def addAttribute(attr: Attribute): DeltaAttributes = copy(attributes = attributes + attr)
+    def addSeed(seed: AttributeSeed): DeltaAttributes  = copy(seeds = seeds + seed)
+  }
+  object DeltaAttributes {
+    def empty: DeltaAttributes = DeltaAttributes(Set.empty, Set.empty)
+  }
+
   def addNewAttributes(attributeSeed: Seq[AttributeSeed]): Future[Set[Attribute]] = {
     //getting all the attributes already in memory
     val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
@@ -226,24 +233,21 @@ class AttributeApiServiceImpl(
         .flatMap(ref => slices(ref, 100))
 
     //calculating the delta of attributes
-    val delta = attributeSeed.foldLeft[DeltaAttributes]((Set.empty, Set.empty))((delta, seed) => {
-      attributesInMemory.find { persisted =>
-        seed.name.equalsIgnoreCase(persisted.name)
-      } match {
-        case Some(persisted) => (delta._1 + persisted, delta._2)
-        case None            => (delta._1, delta._2 + seed)
-      }
-    })
+    val delta: DeltaAttributes = attributeSeed.foldLeft[DeltaAttributes](DeltaAttributes.empty)((delta, seed) =>
+      attributesInMemory
+        .find(persisted => seed.name.equalsIgnoreCase(persisted.name))
+        .fold(delta.addSeed(seed))(delta.addAttribute)
+    )
 
     //for all the not existing attributes, execute the command to persist them through event sourcing
     for {
-      r <- Future.traverse(delta._2) { attributeSeed =>
+      r <- Future.traverse(delta.seeds) { attributeSeed =>
         val persistentAttribute = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
         val commander: EntityRef[Command] =
           sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
         commander.ask(ref => CreateAttribute(persistentAttribute, ref))
       }
-      attributes = delta._1 ++ r
+      attributes = delta.attributes ++ r
     } yield attributes
   }
 
