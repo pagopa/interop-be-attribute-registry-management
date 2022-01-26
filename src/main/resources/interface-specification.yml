@@ -145,6 +145,55 @@ paths:
         in: path
         required: true
         description: name of the attribute to lookup.
+  /jobs/attributes/certified/load:
+    post:
+      summary: Certified attributes upload
+      tags:
+        - attribute
+      responses:
+        '200':
+          description: Attributes loaded
+        '400':
+          description: Bad request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      operationId: loadCertifiedAttributes
+      description: 'Loads certified attributes on this registry.'
+  '/attributes/origin/{origin}/code/{code}':
+    get:
+      summary: Get Attribute by origin and code
+      tags:
+        - attribute
+      responses:
+        '200':
+          description: Attribute data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attribute'
+        '404':
+          description: Attribute not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      operationId: getAttributeByOriginAndCode
+      description: 'returns the attribute in the registry corresponding to origin and code, if any.'
+    parameters:
+      - schema:
+          type: string
+        name: origin
+        in: path
+        required: true
+        description: 'origin of the attribute to lookup (e.g.: IPA).'
+      - schema:
+          type: string
+        name: code
+        in: path
+        required: true
+        description: 'code of the attribute to lookup (e.g.: unique identifier of IPA).'
   '/attributes/{attributeId}':
     get:
       summary: Get Attribute

@@ -1,6 +1,6 @@
 package it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.impl
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
 import akka.http.scaladsl.marshalling.ToEntityMarshaller
@@ -10,7 +10,8 @@ import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
 import com.typesafe.scalalogging.Logger
 import it.pagopa.pdnd.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
-import it.pagopa.pdnd.interop.commons.utils.service.UUIDSupplier
+import it.pagopa.pdnd.interop.commons.utils.AkkaUtils.getFutureBearer
+import it.pagopa.pdnd.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.api.AttributeApiService
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.common.system._
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model._
@@ -21,6 +22,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
   toAPI
 }
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.validation.Validation
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.PartyRegistryService
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
@@ -28,16 +30,13 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-/** @param uuidSupplier
-  * @param system
-  * @param sharding
-  * @param entity
-  */
 class AttributeApiServiceImpl(
   uuidSupplier: UUIDSupplier,
+  timeSupplier: OffsetDateTimeSupplier,
   system: ActorSystem[_],
   sharding: ClusterSharding,
-  entity: Entity[Command, ShardingEnvelope[Command]]
+  entity: Entity[Command, ShardingEnvelope[Command]],
+  partyProcessService: PartyRegistryService
 )(implicit ec: ExecutionContext)
     extends AttributeApiService
     with Validation {
@@ -61,10 +60,10 @@ class AttributeApiServiceImpl(
   ): Route = {
     logger.info("Creating attribute {}", attributeSeed.name)
 
-    validateAttributeName(attributeByName(attributeSeed.name)) match {
+    validateAttributeName(attributeByCommand(GetAttributeByName, attributeSeed.name)) match {
 
       case Valid(_) =>
-        val persistentAttribute = fromSeed(attributeSeed, uuidSupplier)
+        val persistentAttribute = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
         val commander: EntityRef[Command] =
           sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
         val result: Future[Attribute] = commander.ask(ref => CreateAttribute(persistentAttribute, ref))
@@ -112,11 +111,11 @@ class AttributeApiServiceImpl(
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
     logger.info("Retrieving attribute named {}", name)
-    attributeByName(name) match {
+    attributeByCommand(GetAttributeByName, name) match {
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
       case None =>
         logger.error("Error while retrieving attribute named {} - Attribute not found", name)
-        getAttributeByName404(Problem(Option("Attribute not found"), status = 400, "some error"))
+        getAttributeByName404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
     }
   }
 
@@ -187,31 +186,70 @@ class AttributeApiServiceImpl(
     readSlice(commander, 0, sliceSize, LazyList.empty)
   }
 
-  private def attributeByName(name: String): Option[PersistentAttribute] = {
+  private def attributeByCommand[T](
+    f: (T, ActorRef[Option[PersistentAttribute]]) => Command,
+    parameter: T
+  ): Option[PersistentAttribute] = {
     val commanders: List[EntityRef[Command]] =
       (0 until settings.numberOfShards)
         .map(shard => sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString))
         .toList
 
-    recursiveLookup(commanders, name)
+    recursiveLookup(commanders, parameter, f)
   }
 
   @tailrec
-  private def recursiveLookup(
+  private def recursiveLookup[T](
     commanders: List[EntityRef[Command]],
-    attributeName: String
+    parameter: T,
+    f: (T, ActorRef[Option[PersistentAttribute]]) => Command
   ): Option[PersistentAttribute] = {
     commanders match {
       case Nil => None
       case elem :: tail =>
-        Await.result(elem.ask(ref => GetAttributeByName(attributeName, ref)), Duration.Inf) match {
+        Await.result(elem.ask((ref: ActorRef[Option[PersistentAttribute]]) => f(parameter, ref)), Duration.Inf) match {
           case Some(attribute) => Some(attribute)
-          case None            => recursiveLookup(tail, attributeName)
+          case None            => recursiveLookup[T](tail, parameter, f)
         }
     }
   }
 
-  type DeltaAttributes = (Set[Attribute], Set[AttributeSeed])
+  case class DeltaAttributes(attributes: Set[Attribute], seeds: Set[AttributeSeed]) {
+    def addAttribute(attr: Attribute): DeltaAttributes = copy(attributes = attributes + attr)
+    def addSeed(seed: AttributeSeed): DeltaAttributes  = copy(seeds = seeds + seed)
+  }
+  object DeltaAttributes {
+    def empty: DeltaAttributes = DeltaAttributes(Set.empty, Set.empty)
+  }
+
+  def addNewAttributes(attributeSeed: Seq[AttributeSeed]): Future[Set[Attribute]] = {
+    //getting all the attributes already in memory
+    val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
+      sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString)
+    )
+    val attributesInMemory: LazyList[Attribute] =
+      commanders
+        .to(LazyList)
+        .flatMap(ref => slices(ref, 100))
+
+    //calculating the delta of attributes
+    val delta: DeltaAttributes = attributeSeed.foldLeft[DeltaAttributes](DeltaAttributes.empty)((delta, seed) =>
+      attributesInMemory
+        .find(persisted => seed.name.equalsIgnoreCase(persisted.name))
+        .fold(delta.addSeed(seed))(delta.addAttribute)
+    )
+
+    //for all the not existing attributes, execute the command to persist them through event sourcing
+    for {
+      r <- Future.traverse(delta.seeds) { attributeSeed =>
+        val persistentAttribute = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
+        val commander: EntityRef[Command] =
+          sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
+        commander.ask(ref => CreateAttribute(persistentAttribute, ref))
+      }
+      attributes = delta.attributes ++ r
+    } yield attributes
+  }
 
   /** Code: 201, Message: Array of created attributes and already exising ones..., DataType: AttributesResponse
     * Code: 400, Message: Bad Request, DataType: Problem
@@ -225,38 +263,10 @@ class AttributeApiServiceImpl(
     validateAttributes(attributeSeed) match {
 
       case Valid(_) => {
-        //getting all the attributes already in memory
-        val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
-          sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString)
-        )
-        val attributesInMemory: LazyList[Attribute] =
-          commanders
-            .to(LazyList)
-            .flatMap(ref => slices(ref, 100))
-
-        //calculating the delta of attributes
-        val delta = attributeSeed.foldLeft[DeltaAttributes]((Set.empty, Set.empty))((delta, seed) => {
-          attributesInMemory.find { persisted =>
-            seed.name.equalsIgnoreCase(persisted.name)
-          } match {
-            case Some(persisted) => (delta._1 + persisted, delta._2)
-            case None            => (delta._1, delta._2 + seed)
-          }
-        })
-
-        //for all the not existing attributes, execute the command to persist them through event sourcing
-        val result: Future[Set[Attribute]] = for {
-          r <- Future.traverse(delta._2) { attributeSeed =>
-            val persistentAttribute = fromSeed(attributeSeed, uuidSupplier)
-            val commander: EntityRef[Command] =
-              sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
-            commander.ask(ref => CreateAttribute(persistentAttribute, ref))
-          }
-        } yield r
-
+        val result: Future[Set[Attribute]] = addNewAttributes(attributeSeed)
         onComplete(result) {
           case Success(attributeList) =>
-            createAttributes201(AttributesResponse((delta._1 ++ attributeList).toList.sortBy(_.name)))
+            createAttributes201(AttributesResponse(attributeList.toList.sortBy(_.name)))
           case Failure(exception) =>
             logger.error("Error while creating attributes set", exception)
             createAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes saving error"))
@@ -269,5 +279,50 @@ class AttributeApiServiceImpl(
         createAttributes400(Problem(Option(errors), status = 400, "Validation error"))
     }
 
+  }
+
+  /** Code: 200, Message: Attribute data, DataType: Attribute
+    * Code: 404, Message: Attribute not found, DataType: Problem
+    */
+  override def getAttributeByOriginAndCode(origin: String, code: String)(implicit
+    contexts: Seq[(String, String)],
+    toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
+    toEntityMarshallerProblem: ToEntityMarshaller[Problem]
+  ): Route = {
+    logger.info("Retrieving attribute having origin {} and code {}", origin, code)
+    attributeByCommand(GetAttributeByInfo, AttributeInfo(origin, code)) match {
+      case Some(attribute) => getAttributeByOriginAndCode200(toAPI(attribute))
+      case None =>
+        logger.error("Error while retrieving attribute having origin {} and code {} - not found", origin, code)
+        getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
+    }
+  }
+
+  override def loadCertifiedAttributes()(implicit
+    contexts: Seq[(String, String)],
+    toEntityMarshallerProblem: ToEntityMarshaller[Problem]
+  ): Route = {
+    val result = for {
+      bearer     <- getFutureBearer(contexts)
+      categories <- partyProcessService.getCategories(bearer)
+      attributeSeeds = categories.items.map(c =>
+        AttributeSeed(
+          code = Option(c.code),
+          certified = true,
+          description = c.name, //passing the name since no description exists at party-registry-proxy
+          origin = Option(c.origin),
+          name = c.name
+        )
+      )
+      _ <- addNewAttributes(attributeSeeds)
+    } yield ()
+
+    onComplete(result) {
+      case Success(_) =>
+        loadCertifiedAttributes200
+      case Failure(exception) =>
+        logger.error("Error while loading certified attributes from proxy", exception)
+        loadCertifiedAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes loading error"))
+    }
   }
 }

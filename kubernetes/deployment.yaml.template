@@ -76,6 +76,8 @@ spec:
                   fieldPath: metadata.namespace
             - name: WELL_KNOWN_URL
               value: "{{wellKnownURL}}"
+            - name: PARTY_PROXY_URL
+              value: "{{partyProxyUrl}}"
             - name: REQUIRED_CONTACT_POINT_NR
               value: "{{replicas}}"
 ---
