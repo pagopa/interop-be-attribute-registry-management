@@ -151,7 +151,7 @@ paths:
       tags:
         - attribute
       responses:
-        '201':
+        '200':
           description: Attributes loaded
         '400':
           description: Bad request

@@ -315,7 +315,7 @@ class AttributeApiServiceImpl(
 
     onComplete(result) {
       case Success(_) =>
-        loadCertifiedAttributes201
+        loadCertifiedAttributes200
       case Failure(exception) =>
         logger.error("Error while loading certified attributes from proxy", exception)
         loadCertifiedAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes loading error"))
