@@ -39,7 +39,7 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.server.Controller
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.impl.PartyRegistryServiceImpl
 import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.service.{PartyProxyInvoker, PartyRegistryService}
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.api.InstitutionApi
+import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.api.CategoryApi
 import kamon.Kamon
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
@@ -116,7 +116,7 @@ object Main extends App {
         }
 
         val partyProcessService: PartyRegistryService =
-          PartyRegistryServiceImpl(PartyProxyInvoker(), InstitutionApi(ApplicationConfiguration.partyProxyUrl))
+          PartyRegistryServiceImpl(PartyProxyInvoker(), CategoryApi(ApplicationConfiguration.partyProxyUrl))
 
         val attributeApi = new AttributeApi(
           new AttributeApiServiceImpl(
