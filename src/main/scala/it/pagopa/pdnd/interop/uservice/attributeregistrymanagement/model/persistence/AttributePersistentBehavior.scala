@@ -22,7 +22,7 @@ object AttributePersistentBehavior {
     context: ActorContext[Command]
   ): (State, Command) => Effect[Event, State] = { (state, command) =>
     val idleTimeout =
-      context.system.settings.config.getDuration("pdnd-interop-uservice-attribute-registry-management.idle-timeout")
+      context.system.settings.config.getDuration("attribute-registry-management.idle-timeout")
     context.setReceiveTimeout(idleTimeout.get(ChronoUnit.SECONDS) seconds, Idle)
     command match {
       case CreateAttribute(attribute, replyTo) => {
@@ -77,7 +77,7 @@ object AttributePersistentBehavior {
           s" Shard ${persistenceId.id}"
       )
       val numberOfEvents = context.system.settings.config
-        .getInt("pdnd-interop-uservice-attribute-registry-management.number-of-events-before-snapshot")
+        .getInt("attribute-registry-management.number-of-events-before-snapshot")
       EventSourcedBehavior[Command, Event, State](
         persistenceId = persistenceId,
         emptyState = State.empty,
