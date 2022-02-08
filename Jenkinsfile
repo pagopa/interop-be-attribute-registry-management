@@ -56,6 +56,7 @@ pipeline {
       environment {
         POSTGRES = credentials('postgres-db')
         DOCKER_REPO = 'gateway.interop.pdnd.dev'
+        MAIN_AUDIENCE = "${env.MAIN_AUDIENCE}"
         REPLICAS_NR = 1
       }
       steps {
