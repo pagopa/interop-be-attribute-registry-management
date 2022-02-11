@@ -7,15 +7,10 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persist
 
 trait Validation {
 
-  def validateAttributeName(
-    attribute: Option[PersistentAttribute]
-  ): ValidatedNel[String, Option[PersistentAttribute]] = {
-    attribute match {
-      case None => attribute.validNel[String]
-      case Some(a) =>
-        s"An attribute with name = '${a.name}' already exists on the registry".invalidNel[Option[PersistentAttribute]]
-    }
-  }
+  def validateAttributeName(attribute: Option[PersistentAttribute]): ValidatedNel[String, Option[PersistentAttribute]] =
+    attribute.fold(attribute.validNel[String])(a =>
+      s"An attribute with name = '${a.name}' already exists on the registry".invalidNel[Option[PersistentAttribute]]
+    )
 
   def validateAttributes(seeds: Seq[AttributeSeed]): ValidatedNel[String, Seq[AttributeSeed]] = {
     val hasDuplicates = seeds.groupBy(_.name).exists { case (_, group) =>

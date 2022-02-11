@@ -176,11 +176,8 @@ class AttributeApiServiceImpl(
     ): LazyList[Attribute] = {
 
       val slice: Seq[Attribute] = Await.result(commander.ask(ref => GetAttributes(from, to, ref)), Duration.Inf)
-      if (slice.isEmpty)
-        lazyList
-      else {
-        readSlice(commander, to, to + sliceSize, slice.to(LazyList) #::: lazyList)
-      }
+      if (slice.isEmpty) lazyList
+      else readSlice(commander, to, to + sliceSize, slice.to(LazyList) #::: lazyList)
     }
 
     readSlice(commander, 0, sliceSize, LazyList.empty)
@@ -308,7 +305,7 @@ class AttributeApiServiceImpl(
       attributeSeeds = categories.items.map(c =>
         AttributeSeed(
           code = Option(c.code),
-          certified = true,
+          kind = AttributeKind.CERTIFIED,
           description = c.name, //passing the name since no description exists at party-registry-proxy
           origin = Option(c.origin),
           name = c.name

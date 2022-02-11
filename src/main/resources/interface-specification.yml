@@ -19,7 +19,7 @@ tags:
   - name: health
     description: Health operations about service status
 security:
-    - bearerAuth: [ ]
+  - bearerAuth: []
 paths:
   '/attributes':
     post:
@@ -277,9 +277,9 @@ components:
         code:
           type: string
           description: identifies the unique code of this attribute on the origin registry
-        certified:
-          type: boolean
-          description: says if this attribute is certified
+        kind:
+          description: Kind of the attribute. It's one of CERTIFIED, VERIFIED, DECLARED.
+          $ref: '#/components/schemas/AttributeKind'
         description:
           type: string
         origin:
@@ -293,9 +293,15 @@ components:
       required:
         - id
         - description
-        - certified
+        - kind
         - name
         - creationTime
+    AttributeKind:
+      type: string
+      enum:
+        - CERTIFIED
+        - DECLARED
+        - VERIFIED
     AttributeSeed:
       title: AttributeSeed
       type: object
@@ -306,9 +312,9 @@ components:
         code:
           type: string
           description: identifies the unique code of this attribute on the registry
-        certified:
-          type: boolean
-          description: says if this attribute is certified
+        kind:
+          description: Kind of the attribute. It's one of CERTIFIED, VERIFIED, DECLARED.
+          $ref: '#/components/schemas/AttributeKind'
         description:
           type: string
         origin:
@@ -319,7 +325,7 @@ components:
       required:
         - description
         - name
-        - certified
+        - kind
     AttributeSeeds:
       type: array
       items:

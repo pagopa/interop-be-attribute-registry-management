@@ -31,6 +31,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind
 
 class AttributeApiServiceSpec
     extends ScalaTestWithActorTestKit(AkkaTestConfiguration.config)
@@ -105,7 +106,7 @@ class AttributeApiServiceSpec
       val expected = Attribute(
         id = mockUUID.toString,
         code = Some("123"),
-        certified = true,
+        kind = AttributeKind.CERTIFIED,
         description = "this is a test",
         origin = Some("IPA"),
         name = "test",
@@ -115,7 +116,7 @@ class AttributeApiServiceSpec
       //when
       val requestPayload = AttributeSeed(
         code = Some("123"),
-        certified = true,
+        kind = AttributeKind.CERTIFIED,
         description = "this is a test",
         origin = Some("IPA"),
         name = "test"
@@ -136,7 +137,7 @@ class AttributeApiServiceSpec
 
       val requestPayload = AttributeSeed(
         code = Some("123"),
-        certified = true,
+        kind = AttributeKind.CERTIFIED,
         description = "this is a test",
         origin = Some("IPA"),
         name = "pippo"
@@ -146,7 +147,7 @@ class AttributeApiServiceSpec
       //when
       val requestPayloadNew = AttributeSeed(
         code = Some("444"),
-        certified = true,
+        kind = AttributeKind.CERTIFIED,
         description = "Test duplicate name",
         origin = None,
         name = "pippo"
@@ -170,7 +171,7 @@ class AttributeApiServiceSpec
     val expected = Attribute(
       id = mockUUID.toString,
       code = Some("999"),
-      certified = true,
+      kind = AttributeKind.CERTIFIED,
       description = "Bar Foo",
       origin = Some("IPA"),
       name = "BarFoo",
@@ -180,7 +181,7 @@ class AttributeApiServiceSpec
     //when
     val requestPayload = AttributeSeed(
       code = Some("999"),
-      certified = true,
+      kind = AttributeKind.CERTIFIED,
       description = "Bar Foo",
       origin = Some("IPA"),
       name = "BarFoo"
@@ -204,7 +205,7 @@ class AttributeApiServiceSpec
     val expected = Attribute(
       id = mockUUID.toString,
       code = Some("1984"),
-      certified = true,
+      kind = AttributeKind.CERTIFIED,
       description = "Foo bar",
       origin = Some("IPA"),
       name = "FooBar",
@@ -214,7 +215,7 @@ class AttributeApiServiceSpec
     //when
     val requestPayload = AttributeSeed(
       code = Some("1984"),
-      certified = true,
+      kind = AttributeKind.CERTIFIED,
       description = "Foo bar",
       origin = Some("IPA"),
       name = "FooBar"
@@ -239,7 +240,7 @@ class AttributeApiServiceSpec
     val expected = Attribute(
       id = mockUUID.toString,
       code = Some("YADA"),
-      certified = true,
+      kind = AttributeKind.CERTIFIED,
       description = "Proxied",
       origin = Some("IPA"),
       name = "Proxied",

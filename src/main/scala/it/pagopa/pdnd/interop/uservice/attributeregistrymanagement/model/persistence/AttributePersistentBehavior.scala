@@ -25,27 +25,22 @@ object AttributePersistentBehavior {
       context.system.settings.config.getDuration("attribute-registry-management.idle-timeout")
     context.setReceiveTimeout(idleTimeout.get(ChronoUnit.SECONDS) seconds, Idle)
     command match {
-      case CreateAttribute(attribute, replyTo) => {
+      case CreateAttribute(attribute, replyTo) =>
         Effect
           .persist(AttributeAdded(attribute))
           .thenRun((_: State) => replyTo ! (toAPI(attribute)))
-      }
 
-      case GetAttribute(attributeId, replyTo) => {
-        state.getAttribute(attributeId) match {
-          case Some(attribute) =>
-            replyTo ! StatusReply.Success(toAPI(attribute))
-            Effect.none[Event, State]
-          case None =>
-            replyTo ! StatusReply.Error[Attribute](AttributeNotFoundException)
-            Effect.none[Event, State]
-        }
-      }
-      case GetAttributes(from, to, replyTo) => {
+      case GetAttribute(attributeId, replyTo) =>
+        val reply = state
+          .getAttribute(attributeId)
+          .fold(StatusReply.Error[Attribute](AttributeNotFoundException))(a => StatusReply.Success(toAPI(a)))
+        replyTo ! reply
+        Effect.none[Event, State]
+
+      case GetAttributes(from, to, replyTo) =>
         val reply = state.getAttributes.slice(from, to).map(toAPI)
         replyTo ! reply
         Effect.none[Event, State]
-      }
 
       case GetAttributeByName(name, replyTo) =>
         replyTo ! state.getAttributeByName(name)

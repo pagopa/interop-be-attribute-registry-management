@@ -12,7 +12,7 @@ final case class PersistentAttribute(
   id: UUID,
   code: Option[String],
   origin: Option[String],
-  certified: Boolean,
+  kind: PersistentAttributeKind,
   description: String,
   name: String,
   creationTime: OffsetDateTime
@@ -24,7 +24,7 @@ object PersistentAttribute {
       id = persistentAttribute.id.toString,
       code = persistentAttribute.code,
       description = persistentAttribute.description,
-      certified = persistentAttribute.certified,
+      kind = persistentAttribute.kind.toApi,
       origin = persistentAttribute.origin,
       name = persistentAttribute.name,
       creationTime = persistentAttribute.creationTime
@@ -39,7 +39,7 @@ object PersistentAttribute {
     PersistentAttribute(
       id = uuidSupplier.get,
       code = seed.code,
-      certified = seed.certified,
+      kind = PersistentAttributeKind.fromApi(seed.kind),
       description = seed.description,
       origin = seed.origin,
       name = seed.name,
