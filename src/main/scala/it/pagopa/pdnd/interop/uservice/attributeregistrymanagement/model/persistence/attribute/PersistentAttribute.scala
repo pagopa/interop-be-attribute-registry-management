@@ -5,6 +5,10 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{Attrib
 
 import java.time.OffsetDateTime
 import java.util.UUID
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind.CERTIFIED
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind.DECLARED
+import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind.VERIFIED
 
 trait Persistent
 
@@ -12,11 +16,31 @@ final case class PersistentAttribute(
   id: UUID,
   code: Option[String],
   origin: Option[String],
-  certified: Boolean,
+  kind: PersistentAttributeKind,
   description: String,
   name: String,
   creationTime: OffsetDateTime
 ) extends Persistent
+
+sealed trait PersistentAttributeKind {
+  def toApi: AttributeKind = this match {
+    case Certified => AttributeKind.CERTIFIED
+    case Declared  => AttributeKind.DECLARED
+    case Verified  => AttributeKind.VERIFIED
+  }
+}
+
+case object Certified extends PersistentAttributeKind
+case object Declared  extends PersistentAttributeKind
+case object Verified  extends PersistentAttributeKind
+
+object PersistentAttributeKind {
+  def fromApi(kind: AttributeKind): PersistentAttributeKind = kind match {
+    case CERTIFIED => Certified
+    case DECLARED  => Declared
+    case VERIFIED  => Verified
+  }
+}
 
 object PersistentAttribute {
   def toAPI(persistentAttribute: PersistentAttribute): Attribute = {
@@ -24,7 +48,7 @@ object PersistentAttribute {
       id = persistentAttribute.id.toString,
       code = persistentAttribute.code,
       description = persistentAttribute.description,
-      certified = persistentAttribute.certified,
+      kind = persistentAttribute.kind.toApi,
       origin = persistentAttribute.origin,
       name = persistentAttribute.name,
       creationTime = persistentAttribute.creationTime
@@ -39,7 +63,7 @@ object PersistentAttribute {
     PersistentAttribute(
       id = uuidSupplier.get,
       code = seed.code,
-      certified = seed.certified,
+      kind = PersistentAttributeKind.fromApi(seed.kind),
       description = seed.description,
       origin = seed.origin,
       name = seed.name,
