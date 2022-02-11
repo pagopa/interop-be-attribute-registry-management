@@ -42,14 +42,14 @@ object protobufUtils {
     creationTime = fromTime(attr.creationTime)
   )
 
-  def fromProtoKind(kind: AttributeKindV1): Either[Throwable, PersistentAttributeKind] = kind match {
+  private def fromProtoKind(kind: AttributeKindV1): Either[Throwable, PersistentAttributeKind] = kind match {
     case CERTIFIED           => Right(Certified)
     case DECLARED            => Right(Declared)
     case VERIFIED            => Right(Verified)
     case Unrecognized(value) => Left(new RuntimeException(s"Unable to deserialize kind value $value"))
   }
 
-  def toProtoKind(kind: PersistentAttributeKind): AttributeKindV1 = kind match {
+  private def toProtoKind(kind: PersistentAttributeKind): AttributeKindV1 = kind match {
     case Certified => CERTIFIED
     case Declared  => DECLARED
     case Verified  => VERIFIED
