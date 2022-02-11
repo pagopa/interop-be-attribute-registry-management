@@ -5,10 +5,6 @@ import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.{Attrib
 
 import java.time.OffsetDateTime
 import java.util.UUID
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind.CERTIFIED
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind.DECLARED
-import it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.AttributeKind.VERIFIED
 
 trait Persistent
 
@@ -21,26 +17,6 @@ final case class PersistentAttribute(
   name: String,
   creationTime: OffsetDateTime
 ) extends Persistent
-
-sealed trait PersistentAttributeKind {
-  def toApi: AttributeKind = this match {
-    case Certified => AttributeKind.CERTIFIED
-    case Declared  => AttributeKind.DECLARED
-    case Verified  => AttributeKind.VERIFIED
-  }
-}
-
-case object Certified extends PersistentAttributeKind
-case object Declared  extends PersistentAttributeKind
-case object Verified  extends PersistentAttributeKind
-
-object PersistentAttributeKind {
-  def fromApi(kind: AttributeKind): PersistentAttributeKind = kind match {
-    case CERTIFIED => Certified
-    case DECLARED  => Declared
-    case VERIFIED  => Verified
-  }
-}
 
 object PersistentAttribute {
   def toAPI(persistentAttribute: PersistentAttribute): Attribute = {
