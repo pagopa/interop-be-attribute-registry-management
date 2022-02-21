@@ -36,6 +36,7 @@ pipeline {
       environment {
         DOCKER_REPO = "${env.DOCKER_REPO}"
         MAVEN_REPO = "${env.MAVEN_REPO}"
+        NEXUS_CREDENTIALS = credentials('pdnd-nexus')
         ECR_RW = credentials('ecr-rw')
         PDND_TRUST_STORE_PSW = credentials('pdnd-interop-trust-psw')
       }
