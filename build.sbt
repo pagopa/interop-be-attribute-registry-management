@@ -111,9 +111,11 @@ lazy val root = (project in file("."))
       if (buildVersion == "latest")
         buildVersion
       else
-        s"v$buildVersion"
+        s"$buildVersion"
     }".toLowerCase,
-    Docker / packageName := s"services/${name.value}",
+    // Temporary solution
+//    Docker / packageName := s"${name.value}",
+    Docker / packageName := "interop-be-attribute-registry-management",
     Docker / dockerExposedPorts := Seq(8080),
     Docker / maintainer := "https://pagopa.it",
     dockerCommands += Cmd("LABEL", s"org.opencontainers.image.source https://github.com/pagopa/${name.value}")
