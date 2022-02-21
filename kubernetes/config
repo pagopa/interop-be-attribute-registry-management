@@ -9,6 +9,7 @@ SCRIPT_PATH=`pwd`;
 popd  > /dev/null
 
 repository=$DOCKER_REPO
+replicas=$REPLICAS_NR
 
 postgresHost=$POSTGRES_HOST
 postgresPort=$POSTGRES_PORT
@@ -17,13 +18,9 @@ postgresSchema=$POSTGRES_SCHEMA
 wellKnownURL=$WELL_KNOWN_URL
 mainAudience=$MAIN_AUDIENCE
 
-partyProxyVersion="0.1"
-partyProxyUrl="http://pdnd-interop-uservice-party-registry-proxy.pdnd-interop-uservice-party-registry-proxy.svc.cluster.local:8088/pdnd-interop-uservice-party-registry-proxy/"$partyProxyVersion
-
-replicas=$REPLICAS_NR
-
-name=$(cat $SCRIPT_PATH/../build.sbt | grep "name :=" | awk -F:= '{ print $2 }' | sed 's/\"//' | sed 's/\",//' | sed 's/ //' | tr '[:upper:]' '[:lower:]' | grep -v client)
-
+#name=$(cat $SCRIPT_PATH/../build.sbt | grep "name :=" | awk -F:= '{ print $2 }' | sed 's/\"//' | sed 's/\",//' | sed 's/ //' | tr '[:upper:]' '[:lower:]' | grep -v client)
+# Temporary solution
+name=interop-be-attribute-registry-management
 #getting version from sbt
 cd $SCRIPT_PATH/..
 version=$(sbt -Dsbt.log.noformat=true 'inspect actual version' | grep "Setting: java.lang.String" | cut -d '=' -f2 | tr -d ' ')

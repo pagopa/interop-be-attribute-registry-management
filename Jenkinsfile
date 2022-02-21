@@ -34,17 +34,20 @@ pipeline {
     stage('Test and Deploy µservice') {
       agent { label 'sbt-template' }
       environment {
-        NEXUS = 'gateway.interop.pdnd.dev'
-        DOCKER_REPO = 'gateway.interop.pdnd.dev'
-        MAVEN_REPO = 'gateway.interop.pdnd.dev'
-        NEXUS_CREDENTIALS = credentials('pdnd-nexus')
+        DOCKER_REPO = "${env.DOCKER_REPO}"
+        MAVEN_REPO = "${env.MAVEN_REPO}"
+        ECR_RW = credentials('ecr-rw')
         PDND_TRUST_STORE_PSW = credentials('pdnd-interop-trust-psw')
       }
       steps {
         container('sbt-container') {
           unstash "pdnd_trust_store"
           script {
-            sh '''docker login $NEXUS -u $NEXUS_CREDENTIALS_USR -p $NEXUS_CREDENTIALS_PSW'''
+            sh '''
+            export AWS_ACCESS_KEY_ID=$ECR_RW_USR
+            export AWS_SECRET_ACCESS_KEY=$ECR_RW_PSW
+            aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin $DOCKER_REPO
+            '''
             sbtAction 'test docker:publish "project client" publish'
           }
         }
@@ -55,7 +58,7 @@ pipeline {
       agent { label 'sbt-template' }
       environment {
         POSTGRES = credentials('postgres-db')
-        DOCKER_REPO = 'gateway.interop.pdnd.dev'
+        DOCKER_REPO = "${env.DOCKER_REPO}"
         MAIN_AUDIENCE = "${env.MAIN_AUDIENCE}"
         REPLICAS_NR = 1
       }
