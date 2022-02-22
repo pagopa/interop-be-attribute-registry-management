@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.model.{Categories, Category}
+import it.pagopa.interop.partyregistryproxy.client.model.{Categories, Category}
 import it.pagopa.interop.attributeregistrymanagement.api.impl._
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, Problem}
 import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService

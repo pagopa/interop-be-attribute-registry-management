@@ -1,6 +1,6 @@
 package it.pagopa.interop.attributeregistrymanagement.service
 
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.model.Categories
+import it.pagopa.interop.partyregistryproxy.client.model.Categories
 
 import scala.concurrent.Future
 

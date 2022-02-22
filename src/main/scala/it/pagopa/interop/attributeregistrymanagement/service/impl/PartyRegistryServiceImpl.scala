@@ -1,9 +1,9 @@
 package it.pagopa.interop.attributeregistrymanagement.service.impl
 
 import it.pagopa.interop.attributeregistrymanagement.service.{PartyProxyInvoker, PartyRegistryService}
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.api.CategoryApi
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.invoker.ApiRequest
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.model.Categories
+import it.pagopa.interop.partyregistryproxy.client.api.CategoryApi
+import it.pagopa.interop.partyregistryproxy.client.invoker.ApiRequest
+import it.pagopa.interop.partyregistryproxy.client.model.Categories
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future

@@ -39,7 +39,7 @@ import it.pagopa.interop.commons.jwt.{JWTConfiguration, PublicKeysHolder}
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.api.CategoryApi
+import it.pagopa.interop.partyregistryproxy.client.api.CategoryApi
 import kamon.Kamon
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile

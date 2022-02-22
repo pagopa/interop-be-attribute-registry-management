@@ -1,7 +1,7 @@
 package it.pagopa.interop.attributeregistrymanagement
 
 import akka.actor.ActorSystem
-import it.pagopa.pdnd.interop.uservice.partyregistryproxy.client.invoker.ApiInvoker
+import it.pagopa.interop.partyregistryproxy.client.invoker.ApiInvoker
 
 package object service {
   type PartyProxyInvoker = ApiInvoker
