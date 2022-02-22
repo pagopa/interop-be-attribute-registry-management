@@ -1,2 +1,2 @@
-pdnd-interop-uservice-attribute-registry-management
+interop-be-attribute-registry-management
 ---

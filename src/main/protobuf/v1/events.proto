@@ -4,7 +4,7 @@ import "scalapb/scalapb.proto";
 import "v1/attribute.proto";
 
 option (scalapb.options) = {
-  package_name: "it.pagopa.pdnd.interop.uservice.attributeregistrymanagement.model.persistence.serializer.v1"
+  package_name: "it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1"
 };
 
 message AttributeAddedV1 {

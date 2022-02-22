@@ -11,7 +11,7 @@ info:
   x-api-id: an x-api-id
   x-summary: an x-summary
 servers:
-  - url: '/pdnd-interop-uservice-attribute-registry-management/{{version}}'
+  - url: '/attribute-registry-management/{{version}}'
     description: This service is the party manager
 tags:
   - name: attribute
@@ -19,7 +19,7 @@ tags:
   - name: health
     description: Health operations about service status
 security:
-  - bearerAuth: []
+  - bearerAuth: [ ]
 paths:
   '/attributes':
     post:
