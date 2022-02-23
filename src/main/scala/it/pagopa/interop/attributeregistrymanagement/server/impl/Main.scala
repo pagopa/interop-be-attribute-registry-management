@@ -163,7 +163,7 @@ object Main extends App {
         ClusterBootstrap.get(classicSystem).start()
         Behaviors.empty
       },
-      "pdnd-interop-uservice-attribute-registry-management"
+      "interop-be-attribute-registry-management"
     )
   }
 }
