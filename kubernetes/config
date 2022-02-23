@@ -19,8 +19,7 @@ wellKnownURL=$WELL_KNOWN_URL
 mainAudience=$MAIN_AUDIENCE
 
 name=$(cat $SCRIPT_PATH/../build.sbt | grep "name :=" | awk -F:= '{ print $2 }' | sed 's/\"//' | sed 's/\",//' | sed 's/ //' | tr '[:upper:]' '[:lower:]' | grep -v client)
-# Temporary solution
-imageName=interop-be-attribute-registry-management
+
 #getting version from sbt
 cd $SCRIPT_PATH/..
 version=$(sbt -Dsbt.log.noformat=true 'inspect actual version' | grep "Setting: java.lang.String" | cut -d '=' -f2 | tr -d ' ')

@@ -1,4 +1,4 @@
-import PDNDVersions._
+import PagopaVersions._
 import Versions._
 import sbt._
 
@@ -85,10 +85,10 @@ object Dependencies {
     lazy val namespace = "it.pagopa"
 
     lazy val partyProxyClient =
-      namespace %% "pdnd-interop-uservice-party-registry-proxy-client" % partyProxyVersion
+      namespace %% "interop-be-party-registry-proxy-client" % partyProxyVersion
 
-    lazy val commons    = namespace %% "pdnd-interop-commons-utils" % commonsVersion
-    lazy val commonsJWT = namespace %% "pdnd-interop-commons-jwt"   % commonsVersion
+    lazy val commons    = namespace %% "interop-commons-utils" % commonsVersion
+    lazy val commonsJWT = namespace %% "interop-commons-jwt"   % commonsVersion
 
   }
 
