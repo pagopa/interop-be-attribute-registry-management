@@ -66,14 +66,14 @@ class AttributeApiServiceImpl(
         val result: Future[Attribute] = commander.ask(ref => CreateAttribute(persistentAttribute, ref))
         onComplete(result) {
           case Success(attribute) => createAttribute201(attribute)
-          case Failure(exception) =>
-            logger.error("Error while creating attribute {}", attributeSeed.name, exception)
-            createAttribute400(Problem(Option(exception.getMessage), status = 400, "Persistence error"))
+          case Failure(ex) =>
+            logger.error(s"Error while creating attribute ${attributeSeed.name} - ${ex.getMessage}")
+            createAttribute400(Problem(Option(ex.getMessage), status = 400, "Persistence error"))
         }
 
       case Invalid(e) =>
-        val errors = e.toList.mkString(",")
-        logger.error("Error while creating attribute {} - {}", attributeSeed.name, errors)
+        val errors: String = e.toList.mkString(",")
+        logger.error(s"Error while creating attribute {attributeSeed.name} - {errors}")
         createAttribute400(Problem(Option(errors), status = 400, "Validation error"))
     }
 
@@ -94,7 +94,7 @@ class AttributeApiServiceImpl(
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
       case statusReply if statusReply.isError =>
-        logger.error("Error while retrieving attribute {}", attributeId, statusReply.getError)
+        logger.error(s"Error while retrieving attribute $attributeId - ${statusReply.getError}")
         getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
   }
@@ -111,7 +111,7 @@ class AttributeApiServiceImpl(
     attributeByCommand(GetAttributeByName, name) match {
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
       case None =>
-        logger.error("Error while retrieving attribute named {} - Attribute not found", name)
+        logger.error(s"Error while retrieving attribute named $name - Attribute not found")
         getAttributeByName404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
     }
   }
@@ -261,14 +261,14 @@ class AttributeApiServiceImpl(
         onComplete(result) {
           case Success(attributeList) =>
             createAttributes201(AttributesResponse(attributeList.toList.sortBy(_.name)))
-          case Failure(exception) =>
-            logger.error("Error while creating attributes set", exception)
-            createAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes saving error"))
+          case Failure(ex) =>
+            logger.error(s"Error while creating attributes set - ${ex.getMessage}")
+            createAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes saving error"))
         }
 
       case Invalid(e) =>
         val errors = e.toList.mkString(",")
-        logger.error("Error while creating attributes set - {}", errors)
+        logger.error(s"Error while creating attributes set - $errors")
         createAttributes400(Problem(Option(errors), status = 400, "Validation error"))
     }
 
@@ -282,11 +282,11 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
-    logger.info("Retrieving attribute having origin {} and code {}", origin, code)
+    logger.info(s"Retrieving attribute having origin $origin and code $code")
     attributeByCommand(GetAttributeByInfo, AttributeInfo(origin, code)) match {
       case Some(attribute) => getAttributeByOriginAndCode200(toAPI(attribute))
       case None =>
-        logger.error("Error while retrieving attribute having origin {} and code {} - not found", origin, code)
+        logger.error(s"Error while retrieving attribute having origin $origin and code $code - not found")
         getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
     }
   }
@@ -313,9 +313,9 @@ class AttributeApiServiceImpl(
     onComplete(result) {
       case Success(_) =>
         loadCertifiedAttributes200
-      case Failure(exception) =>
-        logger.error("Error while loading certified attributes from proxy", exception)
-        loadCertifiedAttributes400(Problem(Option(exception.getMessage), status = 400, "Attributes loading error"))
+      case Failure(ex) =>
+        logger.error(s"Error while loading certified attributes from proxy - ${ex.getMessage}")
+        loadCertifiedAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes loading error"))
     }
   }
 }

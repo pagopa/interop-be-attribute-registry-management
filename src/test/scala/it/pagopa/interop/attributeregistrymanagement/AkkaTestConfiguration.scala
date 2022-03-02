@@ -23,7 +23,7 @@ trait AkkaTestConfiguration {
     """)
 
   val config: Config = ConfigFactory
-    .parseResourcesAnySyntax("test")
+    .parseResourcesAnySyntax("application-test")
     .withFallback(testData)
 
   def serviceURL: String = s"${config.getString("application.url")}${buildinfo.BuildInfo.interfaceVersion}"
