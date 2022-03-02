@@ -33,7 +33,7 @@ class AttributeApiServiceImpl(
   system: ActorSystem[_],
   sharding: ClusterSharding,
   entity: Entity[Command, ShardingEnvelope[Command]],
-  partyProcessService: PartyRegistryService
+  partyRegistryService: PartyRegistryService
 )(implicit ec: ExecutionContext)
     extends AttributeApiService
     with Validation {
@@ -297,7 +297,7 @@ class AttributeApiServiceImpl(
   ): Route = {
     val result = for {
       bearer     <- getFutureBearer(contexts)
-      categories <- partyProcessService.getCategories(bearer)
+      categories <- partyRegistryService.getCategories(bearer)
       attributeSeeds = categories.items.map(c =>
         AttributeSeed(
           code = Option(c.code),
