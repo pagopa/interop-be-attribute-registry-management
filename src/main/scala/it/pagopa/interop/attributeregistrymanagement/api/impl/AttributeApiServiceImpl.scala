@@ -73,7 +73,7 @@ class AttributeApiServiceImpl(
 
       case Invalid(e) =>
         val errors: String = e.toList.mkString(",")
-        logger.error(s"Error while creating attribute {attributeSeed.name} - {errors}")
+        logger.error(s"Error while creating attribute ${attributeSeed.name} - $errors")
         createAttribute400(Problem(Option(errors), status = 400, "Validation error"))
     }
 
