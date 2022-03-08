@@ -62,6 +62,7 @@ pipeline {
         POSTGRES = credentials('postgres-db')
         DOCKER_REPO = "${env.DOCKER_REPO}"
         MAIN_AUDIENCE = "${env.MAIN_AUDIENCE}"
+        INTERNAL_AUDIENCE_ATTRIBUTES_LOADER = "${env.MAIN_AUDIENCE}"
         REPLICAS_NR = 1
       }
       steps {

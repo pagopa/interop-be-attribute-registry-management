@@ -78,6 +78,8 @@ spec:
               value: "{{wellKnownURL}}"
             - name: MAIN_AUDIENCE
               value: "{{mainAudience}}"
+            - name: INTERNAL_AUDIENCE_ATTRIBUTES_LOADER
+              value: "{{internalAudienceAttributesLoader}}"
             - name: PARTY_PROXY_URL
               value: "{{partyProxyUrl}}"
             - name: REQUIRED_CONTACT_POINT_NR
