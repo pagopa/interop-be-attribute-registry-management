@@ -9,7 +9,7 @@ object ApplicationConfiguration {
   lazy val config: Config = ConfigFactory.load()
 
   lazy val serverPort: Int             = config.getInt("attribute-registry-management.port")
-  lazy val numberOfProjectionTags: Int = config.getInt("attribute-registry-management.projection-tags")
+  lazy val numberOfProjectionTags: Int = config.getInt("akka.cluster.sharding.number-of-shards")
 
   def projectionTag(index: Int) = s"interop-be-attribute-management-persistence|$index"
 
