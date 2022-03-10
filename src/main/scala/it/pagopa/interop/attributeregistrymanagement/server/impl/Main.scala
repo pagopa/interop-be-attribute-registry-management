@@ -1,10 +1,10 @@
 package it.pagopa.interop.attributeregistrymanagement.server.impl
 
-import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorSystem, Behavior}
 import akka.cluster.ClusterEvent
-import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, ShardedDaemonProcess}
-import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
+import akka.cluster.sharding.typed.ShardingEnvelope
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityContext, ShardedDaemonProcess}
 import akka.cluster.typed.{Cluster, Subscribe}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.complete
@@ -24,6 +24,10 @@ import it.pagopa.interop.attributeregistrymanagement.api.impl.{
 }
 import it.pagopa.interop.attributeregistrymanagement.api.{AttributeApi, HealthApi}
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration
+import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration.{
+  numberOfProjectionTags,
+  projectionTag
+}
 import it.pagopa.interop.attributeregistrymanagement.model.Problem
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.{
   AttributePersistentBehavior,
@@ -64,13 +68,14 @@ object Main extends App {
 
   lazy val uuidSupplier = new UUIDSupplierImpl
 
-  def buildPersistentEntity(): Entity[Command, ShardingEnvelope[Command]] =
-    Entity(typeKey = AttributePersistentBehavior.TypeKey) { entityContext =>
-      AttributePersistentBehavior(
-        entityContext.shard,
-        PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId)
-      )
-    }
+  lazy val behaviorFactory: EntityContext[Command] => Behavior[Command] = { entityContext =>
+    val i = math.abs(entityContext.entityId.hashCode % numberOfProjectionTags)
+    AttributePersistentBehavior(
+      entityContext.shard,
+      PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId),
+      projectionTag(i)
+    )
+  }
 
   locally {
     val _ = ActorSystem[Nothing](
@@ -88,14 +93,10 @@ object Main extends App {
 
         val sharding: ClusterSharding = ClusterSharding(context.system)
 
-        val attributePersistentEntity: Entity[Command, ShardingEnvelope[Command]] = buildPersistentEntity()
+        val attributePersistentEntity: Entity[Command, ShardingEnvelope[Command]] =
+          Entity(AttributePersistentBehavior.TypeKey)(behaviorFactory)
 
         val _ = sharding.init(attributePersistentEntity)
-
-        val settings: ClusterShardingSettings = attributePersistentEntity.settings match {
-          case None    => ClusterShardingSettings(context.system)
-          case Some(s) => s
-        }
 
         val persistence = classicSystem.classicSystem.settings.config.getString("akka.persistence.journal.plugin")
 
@@ -108,8 +109,9 @@ object Main extends App {
 
           ShardedDaemonProcess(context.system).init[ProjectionBehavior.Command](
             name = "attribute-projections",
-            numberOfInstances = settings.numberOfShards,
-            behaviorFactory = (i: Int) => ProjectionBehavior(attributePersistentProjection.projections(i)),
+            numberOfInstances = numberOfProjectionTags,
+            behaviorFactory =
+              (i: Int) => ProjectionBehavior(attributePersistentProjection.projection(projectionTag(i))),
             stopMessage = ProjectionBehavior.Stop
           )
         }

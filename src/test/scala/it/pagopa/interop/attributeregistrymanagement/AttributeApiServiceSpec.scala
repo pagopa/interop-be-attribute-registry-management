@@ -4,7 +4,8 @@ import akka.actor
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, ScalaTestWithActorTestKit}
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
-import akka.cluster.sharding.typed.scaladsl.ClusterSharding
+import akka.cluster.sharding.typed.ShardingEnvelope
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
 import akka.cluster.typed.{Cluster, Join}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
@@ -17,9 +18,10 @@ import it.pagopa.interop.attributeregistrymanagement.api.{
   AttributeApiService,
   HealthApi
 }
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeKind, AttributeSeed, Problem}
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
-import it.pagopa.interop.attributeregistrymanagement.server.impl.Main
+import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.behaviorFactory
 import it.pagopa.interop.commons.utils.AkkaUtils.Authenticator
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -47,9 +49,10 @@ class AttributeApiServiceSpec
 
   override def beforeAll(): Unit = {
 
-    val persistentEntity = Main.buildPersistentEntity()
-
     Cluster(system).manager ! Join(Cluster(system).selfMember.address)
+
+    val persistentEntity: Entity[Command, ShardingEnvelope[Command]] =
+      Entity(AttributePersistentBehavior.TypeKey)(behaviorFactory)
 
     sharding.init(persistentEntity)
 
