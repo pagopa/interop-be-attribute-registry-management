@@ -93,7 +93,7 @@ class AttributeApiServiceImpl(
     val result: Future[StatusReply[Attribute]] = commander.ask(ref => GetAttribute(attributeId, ref))
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
-      case statusReply if statusReply.isError =>
+      case statusReply =>
         logger.error(s"Error while retrieving attribute $attributeId - ${statusReply.getError}")
         getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
