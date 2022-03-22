@@ -5,8 +5,8 @@ import sbt._
 object Dependencies {
 
   private[this] object akka {
-    lazy val namespace  = "com.typesafe.akka"
-    lazy val actorTyped = namespace %% "akka-actor-typed" % akkaVersion
+    lazy val namespace        = "com.typesafe.akka"
+    lazy val actorTyped       = namespace %% "akka-actor-typed" % akkaVersion
     lazy val clusterBootstrap =
       "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % akkaManagementVersion
     lazy val clusterHttp     = "com.lightbend.akka.management" %% "akka-management-cluster-http" % akkaManagementVersion
@@ -16,10 +16,10 @@ object Dependencies {
     lazy val discovery       = namespace                       %% "akka-discovery"               % akkaVersion
     lazy val discoveryKubernetesApi =
       "com.lightbend.akka.discovery" %% "akka-discovery-kubernetes-api" % akkaManagementVersion
-    lazy val http       = namespace                       %% "akka-http"            % akkaHttpVersion
-    lazy val httpJson   = namespace                       %% "akka-http-spray-json" % akkaHttpVersion
-    lazy val httpJson4s = "de.heikoseeberger"             %% "akka-http-json4s"     % httpJson4sVersion
-    lazy val management = "com.lightbend.akka.management" %% "akka-management"      % akkaManagementVersion
+    lazy val http                = namespace                       %% "akka-http"            % akkaHttpVersion
+    lazy val httpJson            = namespace                       %% "akka-http-spray-json" % akkaHttpVersion
+    lazy val httpJson4s          = "de.heikoseeberger"             %% "akka-http-json4s"     % httpJson4sVersion
+    lazy val management          = "com.lightbend.akka.management" %% "akka-management"      % akkaManagementVersion
     lazy val managementLogLevels =
       "com.lightbend.akka.management" %% "akka-management-loglevels-logback" % akkaManagementVersion
     lazy val persistence      = namespace            %% "akka-persistence-typed"       % akkaVersion
@@ -38,12 +38,7 @@ object Dependencies {
 
   private[this] object postgres {
     lazy val namespace = "org.postgresql"
-    lazy val jdbc      = namespace % "postgresql" % "42.2.21"
-  }
-
-  private[this] object awssdk {
-    lazy val namespace = "software.amazon.awssdk"
-    lazy val s3        = namespace % "s3" % awsSdkVersion
+    lazy val jdbc      = namespace % "postgresql" % "42.3.3"
   }
 
   lazy val Protobuf = "protobuf"
@@ -110,9 +105,9 @@ object Dependencies {
   object Jars {
     lazy val overrides: Seq[ModuleID] =
       Seq(jackson.annotations % Compile, jackson.core % Compile, jackson.databind % Compile)
-    lazy val `server`: Seq[ModuleID] = Seq(
+    lazy val `server`: Seq[ModuleID]  = Seq(
       // For making Java 12 happy
-      "javax.annotation" % "javax.annotation-api" % "1.3.2" % "compile",
+      "javax.annotation"          % "javax.annotation-api" % "1.3.2" % "compile",
       //
       akka.actorTyped             % Compile,
       akka.clusterTyped           % Compile,
@@ -137,7 +132,6 @@ object Dependencies {
       akka.s3Snapshot             % Compile,
       akka.stream                 % Compile,
       akka.slf4j                  % Compile,
-      awssdk.s3                   % Compile,
       cats.core                   % Compile,
       logback.classic             % Compile,
       kamon.bundle                % Compile,
@@ -152,7 +146,7 @@ object Dependencies {
       scalamock.core              % Test,
       scalatest.core              % Test
     )
-    lazy val client: Seq[ModuleID] = Seq(
+    lazy val client: Seq[ModuleID]    = Seq(
       akka.stream     % Compile,
       akka.http       % Compile,
       akka.httpJson4s % Compile,
