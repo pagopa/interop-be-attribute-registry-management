@@ -22,6 +22,9 @@ security:
   - bearerAuth: [ ]
 paths:
   '/attributes':
+    parameters:
+      - $ref: '#/components/parameters/CorrelationIdHeader'
+      - $ref: '#/components/parameters/IpAddress'
     post:
       summary: Creates attribute
       tags:
@@ -73,6 +76,9 @@ paths:
                 $ref: '#/components/schemas/Problem'
       description: Returns the list of currently available attributes
   '/bulk/attributes':
+    parameters:
+      - $ref: '#/components/parameters/CorrelationIdHeader'
+      - $ref: '#/components/parameters/IpAddress'
     post:
       summary: Creates attributes
       tags:
@@ -139,6 +145,8 @@ paths:
       operationId: getAttributeByName
       description: 'returns the attribute in the registry corresponding to name, if any.'
     parameters:
+      - $ref: '#/components/parameters/CorrelationIdHeader'
+      - $ref: '#/components/parameters/IpAddress'
       - schema:
           type: string
         name: name
@@ -146,6 +154,9 @@ paths:
         required: true
         description: name of the attribute to lookup.
   /jobs/attributes/certified/load:
+    parameters:
+      - $ref: '#/components/parameters/CorrelationIdHeader'
+      - $ref: '#/components/parameters/IpAddress'
     post:
       summary: Certified attributes upload
       tags:
@@ -182,6 +193,8 @@ paths:
       operationId: getAttributeByOriginAndCode
       description: 'returns the attribute in the registry corresponding to origin and code, if any.'
     parameters:
+      - $ref: '#/components/parameters/CorrelationIdHeader'
+      - $ref: '#/components/parameters/IpAddress'
       - schema:
           type: string
         name: origin
@@ -215,6 +228,8 @@ paths:
       operationId: getAttributeById
       description: 'returns the attribute in the registry corresponding to attributeId, if any.'
     parameters:
+      - $ref: '#/components/parameters/CorrelationIdHeader'
+      - $ref: '#/components/parameters/IpAddress'
       - schema:
           type: string
           format: uuid
@@ -237,6 +252,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
 components:
+  parameters:
+    CorrelationIdHeader:
+      in: header
+      name: X-Correlation-Id
+      required: true
+      schema:
+        type: string
+    IpAddress:
+      in: header
+      name: X-Forwarded-For
+      schema:
+        type: string
   schemas:
     Problem:
       properties:

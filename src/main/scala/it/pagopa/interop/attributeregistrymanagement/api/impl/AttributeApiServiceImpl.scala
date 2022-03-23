@@ -60,13 +60,13 @@ class AttributeApiServiceImpl(
     validateAttributeName(attributeByCommand(GetAttributeByName, attributeSeed.name)) match {
 
       case Valid(_) =>
-        val persistentAttribute = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
+        val persistentAttribute           = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
         val commander: EntityRef[Command] =
           sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
-        val result: Future[Attribute] = commander.ask(ref => CreateAttribute(persistentAttribute, ref))
+        val result: Future[Attribute]     = commander.ask(ref => CreateAttribute(persistentAttribute, ref))
         onComplete(result) {
           case Success(attribute) => createAttribute201(attribute)
-          case Failure(ex) =>
+          case Failure(ex)        =>
             logger.error(s"Error while creating attribute ${attributeSeed.name} - ${ex.getMessage}")
             createAttribute400(Problem(Option(ex.getMessage), status = 400, "Persistence error"))
         }
@@ -88,12 +88,12 @@ class AttributeApiServiceImpl(
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = {
     logger.info("Retrieving attribute {}", attributeId)
-    val commander: EntityRef[Command] =
+    val commander: EntityRef[Command]          =
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
     val result: Future[StatusReply[Attribute]] = commander.ask(ref => GetAttribute(attributeId, ref))
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
-      case statusReply =>
+      case statusReply                          =>
         logger.error(s"Error while retrieving attribute $attributeId - ${statusReply.getError}")
         getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
@@ -110,7 +110,7 @@ class AttributeApiServiceImpl(
     logger.info("Retrieving attribute named {}", name)
     attributeByCommand(GetAttributeByName, name) match {
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
-      case None =>
+      case None            =>
         logger.error(s"Error while retrieving attribute named $name - Attribute not found")
         getAttributeByName404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
     }
@@ -199,7 +199,7 @@ class AttributeApiServiceImpl(
     f: (T, ActorRef[Option[PersistentAttribute]]) => Command
   ): Option[PersistentAttribute] = {
     commanders match {
-      case Nil => None
+      case Nil          => None
       case elem :: tail =>
         Await.result(elem.ask((ref: ActorRef[Option[PersistentAttribute]]) => f(parameter, ref)), Duration.Inf) match {
           case Some(attribute) => Some(attribute)
@@ -212,13 +212,13 @@ class AttributeApiServiceImpl(
     def addAttribute(attr: Attribute): DeltaAttributes = copy(attributes = attributes + attr)
     def addSeed(seed: AttributeSeed): DeltaAttributes  = copy(seeds = seeds + seed)
   }
-  object DeltaAttributes {
+  object DeltaAttributes                                                            {
     def empty: DeltaAttributes = DeltaAttributes(Set.empty, Set.empty)
   }
 
   def addNewAttributes(attributeSeed: Seq[AttributeSeed]): Future[Set[Attribute]] = {
-    //getting all the attributes already in memory
-    val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
+    // getting all the attributes already in memory
+    val commanders: Seq[EntityRef[Command]]     = (0 until settings.numberOfShards).map(shard =>
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString)
     )
     val attributesInMemory: LazyList[Attribute] =
@@ -226,17 +226,17 @@ class AttributeApiServiceImpl(
         .to(LazyList)
         .flatMap(ref => slices(ref, 100))
 
-    //calculating the delta of attributes
+    // calculating the delta of attributes
     val delta: DeltaAttributes = attributeSeed.foldLeft[DeltaAttributes](DeltaAttributes.empty)((delta, seed) =>
       attributesInMemory
         .find(persisted => seed.name.equalsIgnoreCase(persisted.name))
         .fold(delta.addSeed(seed))(delta.addAttribute)
     )
 
-    //for all the not existing attributes, execute the command to persist them through event sourcing
+    // for all the not existing attributes, execute the command to persist them through event sourcing
     for {
       r <- Future.traverse(delta.seeds) { attributeSeed =>
-        val persistentAttribute = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
+        val persistentAttribute           = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
         val commander: EntityRef[Command] =
           sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
         commander.ask(ref => CreateAttribute(persistentAttribute, ref))
@@ -261,7 +261,7 @@ class AttributeApiServiceImpl(
         onComplete(result) {
           case Success(attributeList) =>
             createAttributes201(AttributesResponse(attributeList.toList.sortBy(_.name)))
-          case Failure(ex) =>
+          case Failure(ex)            =>
             logger.error(s"Error while creating attributes set - ${ex.getMessage}")
             createAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes saving error"))
         }
@@ -285,7 +285,7 @@ class AttributeApiServiceImpl(
     logger.info(s"Retrieving attribute having origin $origin and code $code")
     attributeByCommand(GetAttributeByInfo, AttributeInfo(origin, code)) match {
       case Some(attribute) => getAttributeByOriginAndCode200(toAPI(attribute))
-      case None =>
+      case None            =>
         logger.error(s"Error while retrieving attribute having origin $origin and code $code - not found")
         getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
     }
@@ -302,7 +302,7 @@ class AttributeApiServiceImpl(
         AttributeSeed(
           code = Option(c.code),
           kind = AttributeKind.CERTIFIED,
-          description = c.name, //passing the name since no description exists at party-registry-proxy
+          description = c.name, // passing the name since no description exists at party-registry-proxy
           origin = Option(c.origin),
           name = c.name
         )
@@ -311,7 +311,7 @@ class AttributeApiServiceImpl(
     } yield ()
 
     onComplete(result) {
-      case Success(_) =>
+      case Success(_)  =>
         loadCertifiedAttributes200
       case Failure(ex) =>
         logger.error(s"Error while loading certified attributes from proxy - ${ex.getMessage}")

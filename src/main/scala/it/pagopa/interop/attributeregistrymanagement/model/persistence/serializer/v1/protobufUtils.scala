@@ -57,7 +57,7 @@ object protobufUtils {
   }
 
   def fromTime(timestamp: OffsetDateTime): String = timestamp.format(formatter)
-  def toTime(timestamp: String): OffsetDateTime = {
+  def toTime(timestamp: String): OffsetDateTime   = {
     OffsetDateTime.of(LocalDateTime.parse(timestamp, formatter), ZoneOffset.UTC)
   }
 }

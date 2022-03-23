@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshalling.{Marshal, Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
+import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -15,6 +15,7 @@ import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryServic
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import org.scalamock.scalatest.MockFactory
 
+import java.net.InetAddress
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -28,7 +29,12 @@ package object attributeregistrymanagement extends MockFactory {
     .returning(Future.successful(Categories(Seq(Category("YADA", "Proxied", "test", "IPA")))))
     .anyNumberOfTimes()
 
-  final val authorization: Seq[Authorization] = Seq(headers.Authorization(OAuth2BearerToken("token")))
+  final val requestHeaders: Seq[HttpHeader] =
+    Seq(
+      headers.Authorization(OAuth2BearerToken("token")),
+      headers.RawHeader("X-Correlation-Id", "test-id"),
+      headers.`X-Forwarded-For`(RemoteAddress(InetAddress.getByName("127.0.0.1")))
+    )
 
   implicit def toEntityMarshallerAttributeSeed: ToEntityMarshaller[AttributeSeed] = sprayJsonMarshaller[AttributeSeed]
   implicit def fromEntityUnmarshallerAttribute: FromEntityUnmarshaller[Attribute] = sprayJsonUnmarshaller[Attribute]
@@ -48,7 +54,7 @@ package object attributeregistrymanagement extends MockFactory {
         HttpRequest(
           uri = s"${AkkaTestConfiguration.serviceURL}/jobs/attributes/certified/load",
           method = HttpMethods.POST,
-          headers = authorization
+          headers = requestHeaders
         )
       ),
       Duration.Inf
@@ -60,7 +66,7 @@ package object attributeregistrymanagement extends MockFactory {
         HttpRequest(
           uri = s"${AkkaTestConfiguration.serviceURL}/attributes/name/$name",
           method = HttpMethods.GET,
-          headers = authorization
+          headers = requestHeaders
         )
       ),
       Duration.Inf
@@ -72,7 +78,7 @@ package object attributeregistrymanagement extends MockFactory {
         HttpRequest(
           uri = s"${AkkaTestConfiguration.serviceURL}/attributes/origin/$origin/code/$code",
           method = HttpMethods.GET,
-          headers = authorization
+          headers = requestHeaders
         )
       ),
       Duration.Inf
@@ -87,7 +93,7 @@ package object attributeregistrymanagement extends MockFactory {
           uri = s"${AkkaTestConfiguration.serviceURL}/$path",
           method = verb,
           entity = data,
-          headers = authorization
+          headers = requestHeaders
         )
       ),
       Duration.Inf

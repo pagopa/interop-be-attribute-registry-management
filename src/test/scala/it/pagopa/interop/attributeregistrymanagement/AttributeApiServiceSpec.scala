@@ -42,7 +42,7 @@ class AttributeApiServiceSpec
   var bindServer: Option[Future[Http.ServerBinding]] = None
   val sharding: ClusterSharding                      = ClusterSharding(system)
 
-  val httpSystem: ActorSystem[Any] =
+  val httpSystem: ActorSystem[Any]                        =
     ActorSystem(Behaviors.ignore[Any], name = system.name, config = system.settings.config)
   implicit val executionContext: ExecutionContextExecutor = httpSystem.executionContext
   implicit val classicSystem: actor.ActorSystem           = httpSystem.classicSystem
@@ -96,7 +96,7 @@ class AttributeApiServiceSpec
   "Attribute API" should {
 
     "create an attribute" in {
-      //given
+      // given
       val mockUUID = UUID.randomUUID()
       val time     = OffsetDateTime.now()
       (() => uuidSupplier.get).expects().returning(mockUUID).once()
@@ -112,7 +112,7 @@ class AttributeApiServiceSpec
         creationTime = time
       )
 
-      //when
+      // when
       val requestPayload = AttributeSeed(
         code = Some("123"),
         kind = AttributeKind.CERTIFIED,
@@ -120,16 +120,16 @@ class AttributeApiServiceSpec
         origin = Some("IPA"),
         name = "test"
       )
-      val response = createAttribute(buildPayload(requestPayload))
-      val body     = Unmarshal(response.entity).to[Attribute].futureValue
+      val response       = createAttribute(buildPayload(requestPayload))
+      val body           = Unmarshal(response.entity).to[Attribute].futureValue
 
-      //then
+      // then
       response.status shouldBe StatusCodes.Created
       body shouldBe expected
     }
 
     "reject attribute creation when an attribute with the same name already exists" in {
-      //given an attribute registry
+      // given an attribute registry
       val mockUUID = "a7aa1933-b966-0fc2-05a4-e1e0e4661511"
       (() => uuidSupplier.get).expects().returning(UUID.fromString(mockUUID)).once()
       (() => timeSupplier.get).expects().returning(OffsetDateTime.now()).once()
@@ -143,7 +143,7 @@ class AttributeApiServiceSpec
       )
       createAttribute(buildPayload(requestPayload))
 
-      //when
+      // when
       val requestPayloadNew = AttributeSeed(
         code = Some("444"),
         kind = AttributeKind.CERTIFIED,
@@ -151,17 +151,17 @@ class AttributeApiServiceSpec
         origin = None,
         name = "pippo"
       )
-      val response = createAttribute(buildPayload(requestPayloadNew))
-      val problem  = Unmarshal(response.entity).to[Problem].futureValue
+      val response          = createAttribute(buildPayload(requestPayloadNew))
+      val problem           = Unmarshal(response.entity).to[Problem].futureValue
 
-      //then
+      // then
       response.status shouldBe StatusCodes.BadRequest
       problem.detail.get shouldBe "An attribute with name = 'pippo' already exists on the registry"
     }
   }
 
   "find an attribute by name" in {
-    //given
+    // given
     val mockUUID = UUID.randomUUID()
     val time     = OffsetDateTime.now()
     (() => uuidSupplier.get).expects().returning(mockUUID).once()
@@ -177,7 +177,7 @@ class AttributeApiServiceSpec
       creationTime = time
     )
 
-    //when
+    // when
     val requestPayload = AttributeSeed(
       code = Some("999"),
       kind = AttributeKind.CERTIFIED,
@@ -187,7 +187,7 @@ class AttributeApiServiceSpec
     )
     createAttribute(buildPayload(requestPayload))
 
-    //then
+    // then
     val response = findAttributeByName("BarFoo")
     val body     = Unmarshal(response.entity).to[Attribute].futureValue
     response.status shouldBe StatusCodes.OK
@@ -195,7 +195,7 @@ class AttributeApiServiceSpec
   }
 
   "find an attribute by origin and code" in {
-    //given
+    // given
     val mockUUID = UUID.randomUUID()
     val time     = OffsetDateTime.now()
     (() => uuidSupplier.get).expects().returning(mockUUID).once()
@@ -211,7 +211,7 @@ class AttributeApiServiceSpec
       creationTime = time
     )
 
-    //when
+    // when
     val requestPayload = AttributeSeed(
       code = Some("1984"),
       kind = AttributeKind.CERTIFIED,
@@ -222,7 +222,7 @@ class AttributeApiServiceSpec
 
     createAttribute(buildPayload(requestPayload))
 
-    //then
+    // then
     val response = findAttributeByOriginAndCode("IPA", "1984")
     val body     = Unmarshal(response.entity).to[Attribute].futureValue
     response.status shouldBe StatusCodes.OK
@@ -230,7 +230,7 @@ class AttributeApiServiceSpec
   }
 
   "load attributes from proxy" in {
-    //given
+    // given
     val mockUUID = UUID.randomUUID()
     val time     = OffsetDateTime.now()
     (() => uuidSupplier.get).expects().returning(mockUUID).once()
@@ -248,7 +248,7 @@ class AttributeApiServiceSpec
 
     loadAttributes
 
-    //then
+    // then
     val response = findAttributeByName("Proxied")
     val body     = Unmarshal(response.entity).to[Attribute].futureValue
     response.status shouldBe StatusCodes.OK

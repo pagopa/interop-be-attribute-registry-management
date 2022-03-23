@@ -9,9 +9,9 @@ final case class State(attributes: Map[String, PersistentAttribute]) extends Per
     .fold(this)(_ => copy(attributes = attributes + (updatedAttribute.id.toString -> updatedAttribute)))
 
   def getAttribute(attributeId: String): Option[PersistentAttribute] = attributes.get(attributeId)
-  def getCertifiedAttributes: Seq[PersistentAttribute]               = attributes.values.filter(_.kind == Certified).toSeq
-  def getAttributes: Seq[PersistentAttribute]                        = attributes.values.toSeq
-  def getAttributeNames: Seq[String]                                 = attributes.values.map(_.name).toSeq
+  def getCertifiedAttributes: Seq[PersistentAttribute] = attributes.values.filter(_.kind == Certified).toSeq
+  def getAttributes: Seq[PersistentAttribute]          = attributes.values.toSeq
+  def getAttributeNames: Seq[String]                   = attributes.values.map(_.name).toSeq
 
   def getAttributeByName(name: String): Option[PersistentAttribute] =
     attributes.values.find(p => name.equalsIgnoreCase(p.name))
