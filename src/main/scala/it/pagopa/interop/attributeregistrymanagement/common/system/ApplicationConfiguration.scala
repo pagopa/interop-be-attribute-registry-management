@@ -18,4 +18,6 @@ object ApplicationConfiguration {
 
   lazy val partyProxyUrl: String = config.getString("services.party-proxy")
 
+  lazy val projectionsEnabled: Boolean = config.getBoolean("akka.projection.enabled")
+
 }

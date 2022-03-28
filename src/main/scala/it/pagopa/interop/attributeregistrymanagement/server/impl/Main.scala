@@ -26,7 +26,8 @@ import it.pagopa.interop.attributeregistrymanagement.api.{AttributeApi, HealthAp
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration.{
   numberOfProjectionTags,
-  projectionTag
+  projectionTag,
+  projectionsEnabled
 }
 import it.pagopa.interop.attributeregistrymanagement.model.Problem
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.{
@@ -56,13 +57,13 @@ object Main extends App {
   val dependenciesLoaded: Try[JWTReader] = for {
     keyset <- JWTConfiguration.jwtReader.loadKeyset()
     jwtValidator = new DefaultJWTReader with PublicKeysHolder {
-      var publicKeyset: Map[KID, SerializedKey] = keyset
+      var publicKeyset: Map[KID, SerializedKey]                                        = keyset
       override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
         getClaimsVerifier(audience = ApplicationConfiguration.jwtAudience)
     }
   } yield jwtValidator
 
-  val jwtValidator = dependenciesLoaded.get //THIS IS THE END OF THE WORLD. Exceptions are welcomed here.
+  val jwtValidator = dependenciesLoaded.get // THIS IS THE END OF THE WORLD. Exceptions are welcomed here.
 
   Kamon.init()
 
@@ -98,9 +99,7 @@ object Main extends App {
 
         val _ = sharding.init(attributePersistentEntity)
 
-        val persistence = classicSystem.classicSystem.settings.config.getString("akka.persistence.journal.plugin")
-        val enabled     = false
-        if (persistence == "jdbc-journal" && enabled) {
+        if (projectionsEnabled) {
           val dbConfig: DatabaseConfig[JdbcProfile] =
             DatabaseConfig.forConfig("akka-persistence-jdbc.shared-databases.slick")
 
