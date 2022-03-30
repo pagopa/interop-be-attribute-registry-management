@@ -340,7 +340,7 @@ class AttributeApiServiceImpl(
             deleteAttributeById404(problem)
           case ex                         =>
             logger.error(s"Error while deleting attribute ${attributeId} - ${ex.getMessage}")
-            val problem = Problem(Some(ex.getMessage), status = 500, "Internal server error")
+            val problem = Problem(Option(ex.getMessage), status = 500, "Internal server error")
             complete(StatusCodes.InternalServerError, problem)
         }
       case Failure(ex)                                   =>
