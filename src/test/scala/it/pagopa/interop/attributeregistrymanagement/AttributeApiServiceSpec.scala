@@ -128,6 +128,29 @@ class AttributeApiServiceSpec
       body shouldBe expected
     }
 
+    "delete an attribute" in {
+      // given
+      val mockUUID = UUID.randomUUID()
+      val time     = OffsetDateTime.now()
+      (() => uuidSupplier.get).expects().returning(mockUUID).once()
+      (() => timeSupplier.get).expects().returning(time).once()
+
+      // when
+      val requestPayload = AttributeSeed(
+        code = Some("123"),
+        kind = AttributeKind.CERTIFIED,
+        description = "this is a test",
+        origin = Some("IPA"),
+        name = "deletable"
+      )
+
+      createAttribute(buildPayload(requestPayload))
+
+      val response = deleteAttribute(mockUUID.toString)
+      // then
+      response.status shouldBe StatusCodes.NoContent
+    }
+
     "reject attribute creation when an attribute with the same name already exists" in {
       // given an attribute registry
       val mockUUID = "a7aa1933-b966-0fc2-05a4-e1e0e4661511"

@@ -28,7 +28,19 @@ object AttributePersistentBehavior {
       case CreateAttribute(attribute, replyTo) =>
         Effect
           .persist(AttributeAdded(attribute))
-          .thenRun((_: State) => replyTo ! (toAPI(attribute)))
+          .thenRun((_: State) => replyTo ! toAPI(attribute))
+
+      case DeleteAttribute(attributeId, replyTo) =>
+        state
+          .getAttribute(attributeId)
+          .fold {
+            replyTo ! StatusReply.Error[Unit](AttributeNotFoundException)
+            Effect.none[AttributeDeleted, State]
+          } { _ =>
+            Effect
+              .persist(AttributeDeleted(attributeId))
+              .thenRun((_: State) => replyTo ! StatusReply.success(()))
+          }
 
       case GetAttribute(attributeId, replyTo) =>
         val reply = state
@@ -60,6 +72,7 @@ object AttributePersistentBehavior {
   val eventHandler: (State, Event) => State = (state, event) =>
     event match {
       case AttributeAdded(attribute) => state.add(attribute)
+      case AttributeDeleted(id)      => state.delete(id)
     }
 
   val TypeKey: EntityTypeKey[Command] =

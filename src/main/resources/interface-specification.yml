@@ -208,6 +208,16 @@ paths:
         required: true
         description: 'code of the attribute to lookup (e.g.: unique identifier of IPA).'
   '/attributes/{attributeId}':
+    parameters:
+      - $ref: '#/components/parameters/CorrelationIdHeader'
+      - $ref: '#/components/parameters/IpAddress'
+      - schema:
+          type: string
+          format: uuid
+        name: attributeId
+        in: path
+        required: true
+        description: registry identifier of the attribute to lookup.
     get:
       summary: Get Attribute
       tags:
@@ -227,16 +237,21 @@ paths:
                 $ref: '#/components/schemas/Problem'
       operationId: getAttributeById
       description: 'returns the attribute in the registry corresponding to attributeId, if any.'
-    parameters:
-      - $ref: '#/components/parameters/CorrelationIdHeader'
-      - $ref: '#/components/parameters/IpAddress'
-      - schema:
-          type: string
-          format: uuid
-        name: attributeId
-        in: path
-        required: true
-        description: registry identifier of the attribute to lookup.
+    delete:
+      summary: Delete Attribute
+      tags:
+        - attribute
+      responses:
+        '204':
+          description: Delete Attribute
+        '404':
+          description: Attribute not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      operationId: deleteAttributeById
+      description: 'delete the attribute in the registry corresponding to attributeId, if any.'
   /status:
     get:
       tags:
