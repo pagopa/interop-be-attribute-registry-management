@@ -4,7 +4,8 @@ import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
 import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.server.Directives.{onComplete, onSuccess}
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives.{complete, onComplete, onSuccess}
 import akka.http.scaladsl.server.Route
 import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
@@ -12,6 +13,7 @@ import com.typesafe.scalalogging.Logger
 import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
 import it.pagopa.interop.attributeregistrymanagement.common.system._
 import it.pagopa.interop.attributeregistrymanagement.model._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributePersistentBehavior.AttributeNotFoundException
 import it.pagopa.interop.attributeregistrymanagement.model.persistence._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute.{fromSeed, toAPI}
@@ -316,6 +318,35 @@ class AttributeApiServiceImpl(
       case Failure(ex) =>
         logger.error(s"Error while loading certified attributes from proxy - ${ex.getMessage}")
         loadCertifiedAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes loading error"))
+    }
+  }
+
+  /**
+   * Code: 204, Message: Attribute deleted
+   * Code: 404, Message: Attribute not found, DataType: Problem
+   */
+  override def deleteAttributeById(
+    attributeId: String
+  )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route = {
+    val commander: EntityRef[Command]     =
+      sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
+    val result: Future[StatusReply[Unit]] = commander.ask(ref => DeleteAttribute(attributeId, ref))
+    onComplete(result) {
+      case Success(statusReply) if statusReply.isSuccess => deleteAttributeById204
+      case Success(statusReply)                          =>
+        statusReply.getError match {
+          case AttributeNotFoundException =>
+            val problem = Problem(None, status = 404, "Attribute not found")
+            deleteAttributeById404(problem)
+          case ex                         =>
+            logger.error(s"Error while deleting attribute ${attributeId} - ${ex.getMessage}")
+            val problem = Problem(Option(ex.getMessage), status = 500, "Internal server error")
+            complete(StatusCodes.InternalServerError, problem)
+        }
+      case Failure(ex)                                   =>
+        logger.error(s"Error while deleting attribute ${attributeId} - ${ex.getMessage}")
+        val problem = Problem(Some(ex.getMessage), status = 500, "Internal server error")
+        complete(StatusCodes.InternalServerError, problem)
     }
   }
 }

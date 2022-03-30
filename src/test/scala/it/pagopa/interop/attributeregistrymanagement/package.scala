@@ -48,6 +48,18 @@ package object attributeregistrymanagement extends MockFactory {
   def createAttribute(data: Source[ByteString, Any])(implicit actorSystem: ActorSystem): HttpResponse =
     execute("attributes", HttpMethods.POST, HttpEntity(ContentTypes.`application/json`, data))
 
+  def deleteAttribute(attributeId: String)(implicit actorSystem: ActorSystem): HttpResponse =
+    Await.result(
+      Http().singleRequest(
+        HttpRequest(
+          uri = s"${AkkaTestConfiguration.serviceURL}/attributes/$attributeId",
+          method = HttpMethods.DELETE,
+          headers = requestHeaders
+        )
+      ),
+      Duration.Inf
+    )
+
   def loadAttributes(implicit actorSystem: ActorSystem): HttpResponse =
     Await.result(
       Http().singleRequest(
