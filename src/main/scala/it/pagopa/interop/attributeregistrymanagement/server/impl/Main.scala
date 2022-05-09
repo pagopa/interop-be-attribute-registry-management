@@ -1,5 +1,6 @@
 package it.pagopa.interop.attributeregistrymanagement.server.impl
 
+import cats.syntax.all._
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.cluster.ClusterEvent
@@ -24,6 +25,7 @@ import it.pagopa.interop.attributeregistrymanagement.api.impl.{
 }
 import it.pagopa.interop.attributeregistrymanagement.api.{AttributeApi, HealthApi}
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration
+import it.pagopa.interop.commons.logging.renderBuildInfo
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration.{
   numberOfProjectionTags,
   projectionTag,
@@ -51,120 +53,64 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.Try
+import buildinfo.BuildInfo
+import com.typesafe.scalalogging.Logger
+import scala.concurrent.Future
+import scala.util.{Success, Failure}
 
-object Main extends App {
+object Main extends App with Dependencies {
 
-  val dependenciesLoaded: Try[JWTReader] = for {
-    keyset <- JWTConfiguration.jwtReader.loadKeyset()
-    jwtValidator = new DefaultJWTReader with PublicKeysHolder {
-      var publicKeyset: Map[KID, SerializedKey]                                        = keyset
-      override protected val claimsVerifier: DefaultJWTClaimsVerifier[SecurityContext] =
-        getClaimsVerifier(audience = ApplicationConfiguration.jwtAudience)
-    }
-  } yield jwtValidator
+  val logger: Logger = Logger(this.getClass())
 
-  val jwtValidator = dependenciesLoaded.get // THIS IS THE END OF THE WORLD. Exceptions are welcomed here.
+  val system = ActorSystem[Nothing](
+    Behaviors.setup[Nothing] { context =>
+      implicit val actorSystem: ActorSystem[Nothing]          = context.system
+      implicit val executionContext: ExecutionContextExecutor = actorSystem.executionContext
 
-  Kamon.init()
+      Kamon.init()
+      AkkaManagement.get(actorSystem.classicSystem).start()
 
-  lazy val uuidSupplier = new UUIDSupplierImpl
+      val sharding: ClusterSharding = ClusterSharding(actorSystem)
+      sharding.init(attributePersistentEntity)
 
-  lazy val behaviorFactory: EntityContext[Command] => Behavior[Command] = { entityContext =>
-    val i = math.abs(entityContext.entityId.hashCode % numberOfProjectionTags)
-    AttributePersistentBehavior(
-      entityContext.shard,
-      PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId),
-      projectionTag(i)
-    )
-  }
+      val cluster: Cluster = Cluster(actorSystem)
+      ClusterBootstrap.get(actorSystem.classicSystem).start()
 
-  locally {
-    val _ = ActorSystem[Nothing](
-      Behaviors.setup[Nothing] { context =>
-        import akka.actor.typed.scaladsl.adapter._
-        val marshallerImpl                                      = new AttributeApiMarshallerImpl()
-        implicit val classicSystem: classic.ActorSystem         = context.system.toClassic
-        implicit val executionContext: ExecutionContextExecutor = context.system.executionContext
+      val listener = context.spawn(
+        Behaviors.receive[ClusterEvent.MemberEvent]((ctx, event) => {
+          ctx.log.debug("MemberEvent: {}", event)
+          Behaviors.same
+        }),
+        "listener"
+      )
 
-        val cluster = Cluster(context.system)
+      cluster.subscriptions ! Subscribe(listener, classOf[ClusterEvent.MemberEvent])
 
-        context.log.info(
-          "Started [" + context.system + "], cluster.selfAddress = " + cluster.selfMember.address + ", build info = " + buildinfo.BuildInfo.toString + ")"
-        )
+      if (ApplicationConfiguration.projectionsEnabled) initProjections()
 
-        val sharding: ClusterSharding = ClusterSharding(context.system)
+      logger.info(renderBuildInfo(BuildInfo))
+      logger.info(s"Started cluster at ${cluster.selfMember.address}")
 
-        val attributePersistentEntity: Entity[Command, ShardingEnvelope[Command]] =
-          Entity(AttributePersistentBehavior.TypeKey)(behaviorFactory)
+      val serverBinding: Future[Http.ServerBinding] = for {
+        jwtReader <- getJwtValidator()
+        api        = attributeApi(sharding, jwtReader)
+        controller = new Controller(api, healthApi, validationExceptionToRoute.some)(actorSystem.classicSystem)
+        binding <- Http().newServerAt("0.0.0.0", ApplicationConfiguration.serverPort).bind(controller.routes)
+      } yield binding
 
-        val _ = sharding.init(attributePersistentEntity)
+      serverBinding.onComplete {
+        case Success(b) =>
+          logger.info(s"Started server at ${b.localAddress.getHostString()}:${b.localAddress.getPort()}")
+        case Failure(e) =>
+          actorSystem.terminate()
+          logger.error("Startup error: ", e)
+      }
 
-        if (projectionsEnabled) {
-          val dbConfig: DatabaseConfig[JdbcProfile] =
-            DatabaseConfig.forConfig("akka-persistence-jdbc.shared-databases.slick")
+      Behaviors.empty
+    },
+    BuildInfo.name
+  )
 
-          val attributePersistentProjection =
-            AttributePersistentProjection(context.system, attributePersistentEntity, dbConfig)
+  system.whenTerminated.onComplete { case _ => Kamon.stop() }(scala.concurrent.ExecutionContext.global)
 
-          ShardedDaemonProcess(context.system).init[ProjectionBehavior.Command](
-            name = "attribute-projections",
-            numberOfInstances = numberOfProjectionTags,
-            behaviorFactory =
-              (i: Int) => ProjectionBehavior(attributePersistentProjection.projection(projectionTag(i))),
-            stopMessage = ProjectionBehavior.Stop
-          )
-        }
-
-        val partyProcessService: PartyRegistryService =
-          PartyRegistryServiceImpl(PartyProxyInvoker(), CategoryApi(ApplicationConfiguration.partyProxyUrl))
-
-        val attributeApi = new AttributeApi(
-          new AttributeApiServiceImpl(
-            uuidSupplier,
-            OffsetDateTimeSupplierImpl,
-            context.system,
-            sharding,
-            attributePersistentEntity,
-            partyProcessService
-          ),
-          marshallerImpl,
-          jwtValidator.OAuth2JWTValidatorAsContexts
-        )
-
-        val healthApi: HealthApi = new HealthApi(
-          new HealthServiceApiImpl(),
-          new HealthApiMarshallerImpl(),
-          SecurityDirectives.authenticateOAuth2("SecurityRealm", PassThroughAuthenticator)
-        )
-
-        val _ = AkkaManagement.get(classicSystem).start()
-
-        val controller = new Controller(
-          attributeApi,
-          healthApi,
-          validationExceptionToRoute = Some(report => {
-            val message = OpenapiUtils.errorFromRequestValidationReport(report)
-            complete(400, Problem(Some(message), 400, "bad request"))(marshallerImpl.toEntityMarshallerProblem)
-          })
-        )
-
-        val _ = Http().newServerAt("0.0.0.0", ApplicationConfiguration.serverPort).bind(controller.routes)
-
-        val listener = context.spawn(
-          Behaviors.receive[ClusterEvent.MemberEvent]((ctx, event) => {
-            ctx.log.info("MemberEvent: {}", event)
-            Behaviors.same
-          }),
-          "listener"
-        )
-
-        Cluster(context.system).subscriptions ! Subscribe(listener, classOf[ClusterEvent.MemberEvent])
-
-        val _ = AkkaManagement(classicSystem).start()
-        ClusterBootstrap.get(classicSystem).start()
-        Behaviors.empty
-      },
-      "interop-be-attribute-registry-management"
-    )
-  }
 }

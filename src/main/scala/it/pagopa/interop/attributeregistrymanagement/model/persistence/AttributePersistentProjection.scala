@@ -21,9 +21,8 @@ final case class AttributePersistentProjection(
   dbConfig: DatabaseConfig[JdbcProfile]
 ) {
 
-  def sourceProvider(tag: String): SourceProvider[Offset, EventEnvelope[Event]] =
-    EventSourcedProvider
-      .eventsByTag[Event](system, readJournalPluginId = JdbcReadJournal.Identifier, tag = tag)
+  def sourceProvider(tag: String): SourceProvider[Offset, EventEnvelope[Event]] = EventSourcedProvider
+    .eventsByTag[Event](system, readJournalPluginId = JdbcReadJournal.Identifier, tag = tag)
 
   def projection(tag: String): ExactlyOnceProjection[Offset, EventEnvelope[Event]] = {
     implicit val as: ActorSystem[_] = system
@@ -37,13 +36,11 @@ final case class AttributePersistentProjection(
 }
 
 class ProjectionHandler(tag: String) extends SlickHandler[EventEnvelope[Event]] {
-  override def process(envelope: EventEnvelope[Event]) = {
-    envelope.event match {
-      case _ =>
-        println(s"This is the envelope event payload > ${envelope.event}")
-        println(s"On tagged projection > $tag")
-        DBIOAction.successful(Done)
-    }
+  override def process(envelope: EventEnvelope[Event]) = envelope.event match {
+    case _ =>
+      println(s"This is the envelope event payload > ${envelope.event}")
+      println(s"On tagged projection > $tag")
+      DBIOAction.successful(Done)
   }
 
 }

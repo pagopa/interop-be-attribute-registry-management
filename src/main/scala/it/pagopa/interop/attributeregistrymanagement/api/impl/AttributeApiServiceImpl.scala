@@ -28,6 +28,8 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import akka.util.Timeout
+import scala.concurrent.duration._
 
 class AttributeApiServiceImpl(
   uuidSupplier: UUIDSupplier,
@@ -41,6 +43,8 @@ class AttributeApiServiceImpl(
     with Validation {
 
   private val logger = Logger.takingImplicit[ContextFieldsToLog](LoggerFactory.getLogger(this.getClass))
+
+  implicit val timeout: Timeout = 300.seconds
 
   private val settings: ClusterShardingSettings = entity.settings match {
     case None    => ClusterShardingSettings(system)
@@ -69,7 +73,7 @@ class AttributeApiServiceImpl(
         onComplete(result) {
           case Success(attribute) => createAttribute201(attribute)
           case Failure(ex)        =>
-            logger.error(s"Error while creating attribute ${attributeSeed.name} - ${ex.getMessage}")
+            logger.error(s"Error while creating attribute ${attributeSeed.name}", ex)
             createAttribute400(Problem(Option(ex.getMessage), status = 400, "Persistence error"))
         }
 
@@ -96,7 +100,7 @@ class AttributeApiServiceImpl(
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
       case statusReply                          =>
-        logger.error(s"Error while retrieving attribute $attributeId - ${statusReply.getError}")
+        logger.error(s"Error while retrieving attribute $attributeId", statusReply.getError)
         getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
   }
@@ -264,7 +268,7 @@ class AttributeApiServiceImpl(
           case Success(attributeList) =>
             createAttributes201(AttributesResponse(attributeList.toList.sortBy(_.name)))
           case Failure(ex)            =>
-            logger.error(s"Error while creating attributes set - ${ex.getMessage}")
+            logger.error(s"Error while creating attributes set", ex)
             createAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes saving error"))
         }
 
@@ -316,7 +320,7 @@ class AttributeApiServiceImpl(
       case Success(_)  =>
         loadCertifiedAttributes200
       case Failure(ex) =>
-        logger.error(s"Error while loading certified attributes from proxy - ${ex.getMessage}")
+        logger.error(s"Error while loading certified attributes from proxy", ex)
         loadCertifiedAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes loading error"))
     }
   }
@@ -339,12 +343,12 @@ class AttributeApiServiceImpl(
             val problem = Problem(None, status = 404, "Attribute not found")
             deleteAttributeById404(problem)
           case ex                         =>
-            logger.error(s"Error while deleting attribute ${attributeId} - ${ex.getMessage}")
+            logger.error(s"Error while deleting attribute ${attributeId}", ex)
             val problem = Problem(Option(ex.getMessage), status = 500, "Internal server error")
             complete(StatusCodes.InternalServerError, problem)
         }
       case Failure(ex)                                   =>
-        logger.error(s"Error while deleting attribute ${attributeId} - ${ex.getMessage}")
+        logger.error(s"Error while deleting attribute ${attributeId}", ex)
         val problem = Problem(Some(ex.getMessage), status = 500, "Internal server error")
         complete(StatusCodes.InternalServerError, problem)
     }

@@ -20,12 +20,14 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 package object attributeregistrymanagement extends MockFactory {
+  implicit val contexts: Seq[(String, String)]       = Seq.empty
   val uuidSupplier: UUIDSupplier                     = mock[UUIDSupplier]
   val timeSupplier: OffsetDateTimeSupplier           = mock[OffsetDateTimeSupplier]
   val mockPartyRegistryService: PartyRegistryService = mock[PartyRegistryService]
 
-  (mockPartyRegistryService.getCategories _)
-    .expects(*)
+  (mockPartyRegistryService
+    .getCategories(_: String)(_: Seq[(String, String)]))
+    .expects(*, *)
     .returning(Future.successful(Categories(Seq(Category("YADA", "Proxied", "test", "IPA")))))
     .anyNumberOfTimes()
 
