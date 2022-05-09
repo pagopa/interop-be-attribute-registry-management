@@ -11,7 +11,6 @@ import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
 import com.typesafe.scalalogging.Logger
 import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
-import it.pagopa.interop.attributeregistrymanagement.common.system._
 import it.pagopa.interop.attributeregistrymanagement.model._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributePersistentBehavior.AttributeNotFoundException
 import it.pagopa.interop.attributeregistrymanagement.model.persistence._

@@ -2,57 +2,22 @@ package it.pagopa.interop.attributeregistrymanagement.server.impl
 
 import cats.syntax.all._
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorSystem, Behavior}
+import akka.actor.typed.ActorSystem
 import akka.cluster.ClusterEvent
-import akka.cluster.sharding.typed.ShardingEnvelope
-import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityContext, ShardedDaemonProcess}
+import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.typed.{Cluster, Subscribe}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Directives.complete
-import akka.http.scaladsl.server.directives.SecurityDirectives
+
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
-import akka.persistence.typed.PersistenceId
-import akka.projection.ProjectionBehavior
-import akka.{actor => classic}
-import com.nimbusds.jose.proc.SecurityContext
-import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
-import it.pagopa.interop.attributeregistrymanagement.api.impl.{
-  AttributeApiMarshallerImpl,
-  AttributeApiServiceImpl,
-  HealthApiMarshallerImpl,
-  HealthServiceApiImpl
-}
-import it.pagopa.interop.attributeregistrymanagement.api.{AttributeApi, HealthApi}
+
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration
 import it.pagopa.interop.commons.logging.renderBuildInfo
-import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration.{
-  numberOfProjectionTags,
-  projectionTag,
-  projectionsEnabled
-}
-import it.pagopa.interop.attributeregistrymanagement.model.Problem
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.{
-  AttributePersistentBehavior,
-  AttributePersistentProjection,
-  Command
-}
+
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
-import it.pagopa.interop.attributeregistrymanagement.service.impl.PartyRegistryServiceImpl
-import it.pagopa.interop.attributeregistrymanagement.service.{PartyProxyInvoker, PartyRegistryService}
-import it.pagopa.interop.commons.jwt.service.JWTReader
-import it.pagopa.interop.commons.jwt.service.impl.{DefaultJWTReader, getClaimsVerifier}
-import it.pagopa.interop.commons.jwt.{JWTConfiguration, KID, PublicKeysHolder, SerializedKey}
-import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
-import it.pagopa.interop.commons.utils.OpenapiUtils
-import it.pagopa.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
-import it.pagopa.interop.partyregistryproxy.client.api.CategoryApi
 import kamon.Kamon
-import slick.basic.DatabaseConfig
-import slick.jdbc.JdbcProfile
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.util.Try
 import buildinfo.BuildInfo
 import com.typesafe.scalalogging.Logger
 import scala.concurrent.Future
