@@ -27,7 +27,7 @@ object Main extends App with Dependencies {
 
   val logger: Logger = Logger(this.getClass())
 
-  val system = ActorSystem[Nothing](
+  val actorSystem: ActorSystem[Nothing] = ActorSystem[Nothing](
     Behaviors.setup[Nothing] { context =>
       implicit val actorSystem: ActorSystem[Nothing]          = context.system
       implicit val executionContext: ExecutionContextExecutor = actorSystem.executionContext
@@ -76,6 +76,6 @@ object Main extends App with Dependencies {
     BuildInfo.name
   )
 
-  system.whenTerminated.onComplete { case _ => Kamon.stop() }(scala.concurrent.ExecutionContext.global)
+  actorSystem.whenTerminated.onComplete { case _ => Kamon.stop() }(scala.concurrent.ExecutionContext.global)
 
 }
