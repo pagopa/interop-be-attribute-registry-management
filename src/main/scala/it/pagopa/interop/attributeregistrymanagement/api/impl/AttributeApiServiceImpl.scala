@@ -9,7 +9,6 @@ import akka.http.scaladsl.server.Directives.{complete, onComplete, onSuccess}
 import akka.http.scaladsl.server.Route
 import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
-import com.typesafe.scalalogging.Logger
 import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
 import it.pagopa.interop.attributeregistrymanagement.model._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributePersistentBehavior.AttributeNotFoundException
@@ -21,7 +20,7 @@ import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryServic
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.AkkaUtils.getFutureBearer
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
@@ -41,7 +40,7 @@ class AttributeApiServiceImpl(
     extends AttributeApiService
     with Validation {
 
-  private val logger = Logger.takingImplicit[ContextFieldsToLog](LoggerFactory.getLogger(this.getClass))
+  private val logger = Logger.takingImplicit[ContextFieldsToLog](this.getClass)
 
   implicit val timeout: Timeout = 300.seconds
 
