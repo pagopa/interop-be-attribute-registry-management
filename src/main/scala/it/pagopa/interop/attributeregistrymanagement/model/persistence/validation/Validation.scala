@@ -13,14 +13,11 @@ trait Validation {
     )
 
   def validateAttributes(seeds: Seq[AttributeSeed]): ValidatedNel[String, Seq[AttributeSeed]] = {
-    val hasDuplicates = seeds.groupBy(_.name).exists { case (_, group) =>
-      group.size > 1
-    }
+    val hasDuplicates = seeds.groupBy(_.name).exists { case (_, group) => group.size > 1 }
 
     if (hasDuplicates)
       s"The request payload MUST not contain attributes with the same name".invalidNel[Seq[AttributeSeed]]
-    else
-      seeds.validNel[String]
+    else seeds.validNel[String]
   }
 
 }

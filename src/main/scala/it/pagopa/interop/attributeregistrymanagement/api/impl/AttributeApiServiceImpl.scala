@@ -9,9 +9,7 @@ import akka.http.scaladsl.server.Directives.{complete, onComplete, onSuccess}
 import akka.http.scaladsl.server.Route
 import akka.pattern.StatusReply
 import cats.data.Validated.{Invalid, Valid}
-import com.typesafe.scalalogging.Logger
 import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
-import it.pagopa.interop.attributeregistrymanagement.common.system._
 import it.pagopa.interop.attributeregistrymanagement.model._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributePersistentBehavior.AttributeNotFoundException
 import it.pagopa.interop.attributeregistrymanagement.model.persistence._
@@ -22,12 +20,14 @@ import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryServic
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.AkkaUtils.getFutureBearer
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import akka.util.Timeout
+import scala.concurrent.duration._
 
 class AttributeApiServiceImpl(
   uuidSupplier: UUIDSupplier,
@@ -40,7 +40,9 @@ class AttributeApiServiceImpl(
     extends AttributeApiService
     with Validation {
 
-  private val logger = Logger.takingImplicit[ContextFieldsToLog](LoggerFactory.getLogger(this.getClass))
+  private val logger = Logger.takingImplicit[ContextFieldsToLog](this.getClass)
+
+  implicit val timeout: Timeout = 300.seconds
 
   private val settings: ClusterShardingSettings = entity.settings match {
     case None    => ClusterShardingSettings(system)
@@ -69,7 +71,7 @@ class AttributeApiServiceImpl(
         onComplete(result) {
           case Success(attribute) => createAttribute201(attribute)
           case Failure(ex)        =>
-            logger.error(s"Error while creating attribute ${attributeSeed.name} - ${ex.getMessage}")
+            logger.error(s"Error while creating attribute ${attributeSeed.name}", ex)
             createAttribute400(Problem(Option(ex.getMessage), status = 400, "Persistence error"))
         }
 
@@ -96,7 +98,7 @@ class AttributeApiServiceImpl(
     onSuccess(result) {
       case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
       case statusReply                          =>
-        logger.error(s"Error while retrieving attribute $attributeId - ${statusReply.getError}")
+        logger.error(s"Error while retrieving attribute $attributeId", statusReply.getError)
         getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
     }
   }
@@ -264,7 +266,7 @@ class AttributeApiServiceImpl(
           case Success(attributeList) =>
             createAttributes201(AttributesResponse(attributeList.toList.sortBy(_.name)))
           case Failure(ex)            =>
-            logger.error(s"Error while creating attributes set - ${ex.getMessage}")
+            logger.error(s"Error while creating attributes set", ex)
             createAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes saving error"))
         }
 
@@ -316,7 +318,7 @@ class AttributeApiServiceImpl(
       case Success(_)  =>
         loadCertifiedAttributes200
       case Failure(ex) =>
-        logger.error(s"Error while loading certified attributes from proxy - ${ex.getMessage}")
+        logger.error(s"Error while loading certified attributes from proxy", ex)
         loadCertifiedAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes loading error"))
     }
   }
@@ -339,12 +341,12 @@ class AttributeApiServiceImpl(
             val problem = Problem(None, status = 404, "Attribute not found")
             deleteAttributeById404(problem)
           case ex                         =>
-            logger.error(s"Error while deleting attribute ${attributeId} - ${ex.getMessage}")
+            logger.error(s"Error while deleting attribute ${attributeId}", ex)
             val problem = Problem(Option(ex.getMessage), status = 500, "Internal server error")
             complete(StatusCodes.InternalServerError, problem)
         }
       case Failure(ex)                                   =>
-        logger.error(s"Error while deleting attribute ${attributeId} - ${ex.getMessage}")
+        logger.error(s"Error while deleting attribute ${attributeId}", ex)
         val problem = Problem(Some(ex.getMessage), status = 500, "Internal server error")
         complete(StatusCodes.InternalServerError, problem)
     }

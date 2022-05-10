@@ -3,7 +3,7 @@ package it.pagopa.interop.attributeregistrymanagement.common.system
 import com.typesafe.config.{Config, ConfigFactory}
 
 object ApplicationConfiguration {
-
+  System.setProperty("kanela.show-banner", "false")
   val config: Config = ConfigFactory.load()
 
   val serverPort: Int             = config.getInt("attribute-registry-management.port")

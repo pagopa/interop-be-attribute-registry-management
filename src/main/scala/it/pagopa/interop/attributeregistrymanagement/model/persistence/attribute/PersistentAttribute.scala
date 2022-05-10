@@ -19,32 +19,28 @@ final case class PersistentAttribute(
 ) extends Persistent
 
 object PersistentAttribute {
-  def toAPI(persistentAttribute: PersistentAttribute): Attribute = {
-    Attribute(
-      id = persistentAttribute.id.toString,
-      code = persistentAttribute.code,
-      description = persistentAttribute.description,
-      kind = persistentAttribute.kind.toApi,
-      origin = persistentAttribute.origin,
-      name = persistentAttribute.name,
-      creationTime = persistentAttribute.creationTime
-    )
-  }
+  def toAPI(persistentAttribute: PersistentAttribute): Attribute = Attribute(
+    id = persistentAttribute.id.toString,
+    code = persistentAttribute.code,
+    description = persistentAttribute.description,
+    kind = persistentAttribute.kind.toApi,
+    origin = persistentAttribute.origin,
+    name = persistentAttribute.name,
+    creationTime = persistentAttribute.creationTime
+  )
 
   def fromSeed(
     seed: AttributeSeed,
     uuidSupplier: UUIDSupplier,
     timeSupplier: OffsetDateTimeSupplier
-  ): PersistentAttribute = {
-    PersistentAttribute(
-      id = uuidSupplier.get,
-      code = seed.code,
-      kind = PersistentAttributeKind.fromApi(seed.kind),
-      description = seed.description,
-      origin = seed.origin,
-      name = seed.name,
-      creationTime = timeSupplier.get
-    )
-  }
+  ): PersistentAttribute = PersistentAttribute(
+    id = uuidSupplier.get,
+    code = seed.code,
+    kind = PersistentAttributeKind.fromApi(seed.kind),
+    description = seed.description,
+    origin = seed.origin,
+    name = seed.name,
+    creationTime = timeSupplier.get
+  )
 
 }

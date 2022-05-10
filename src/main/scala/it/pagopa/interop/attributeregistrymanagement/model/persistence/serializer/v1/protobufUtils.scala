@@ -16,22 +16,20 @@ object protobufUtils {
 
   private val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
-  def toPersistentAttribute(attr: AttributeV1): Either[Throwable, PersistentAttribute] = {
-    for {
-      uuid <- Try {
-        UUID.fromString(attr.id)
-      }.toEither
-      kind <- fromProtoKind(attr.kind)
-    } yield PersistentAttribute(
-      id = uuid,
-      code = attr.code,
-      kind = kind,
-      description = attr.description,
-      origin = attr.origin,
-      name = attr.name,
-      creationTime = toTime(attr.creationTime)
-    )
-  }
+  def toPersistentAttribute(attr: AttributeV1): Either[Throwable, PersistentAttribute] = for {
+    uuid <- Try {
+      UUID.fromString(attr.id)
+    }.toEither
+    kind <- fromProtoKind(attr.kind)
+  } yield PersistentAttribute(
+    id = uuid,
+    code = attr.code,
+    kind = kind,
+    description = attr.description,
+    origin = attr.origin,
+    name = attr.name,
+    creationTime = toTime(attr.creationTime)
+  )
 
   def toProtobufAttribute(attr: PersistentAttribute): AttributeV1 = AttributeV1(
     id = attr.id.toString,
@@ -57,7 +55,7 @@ object protobufUtils {
   }
 
   def fromTime(timestamp: OffsetDateTime): String = timestamp.format(formatter)
-  def toTime(timestamp: String): OffsetDateTime   = {
+  def toTime(timestamp: String): OffsetDateTime   =
     OffsetDateTime.of(LocalDateTime.parse(timestamp, formatter), ZoneOffset.UTC)
-  }
+
 }
