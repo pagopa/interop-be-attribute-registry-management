@@ -16,7 +16,7 @@ object Versions {
   lazy val scalaMockVersion       = "5.2.0"
   lazy val scalapbVersion         = "0.11.1"
   lazy val scalatestVersion       = "3.2.11"
-  lazy val slickProjectionVersion = "1.2.2"
+  lazy val slickProjectionVersion = "1.2.4"
   lazy val slickVersion           = "3.3.3"
 }
 
