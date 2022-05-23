@@ -22,7 +22,6 @@ import it.pagopa.interop.attributeregistrymanagement.model.persistence.{Attribut
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeKind, AttributeSeed, Problem}
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.behaviorFactory
-import it.pagopa.interop.commons.utils.AkkaUtils.Authenticator
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -56,7 +55,7 @@ class AttributeApiServiceSpec
 
     sharding.init(persistentEntity)
 
-    val wrappingDirective = SecurityDirectives.authenticateOAuth2("SecurityRealm", Authenticator)
+    val wrappingDirective = SecurityDirectives.authenticateOAuth2("SecurityRealm", AdminMockAuthenticator)
 
     val partyApiService: AttributeApiService =
       new AttributeApiServiceImpl(
