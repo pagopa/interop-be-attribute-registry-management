@@ -27,7 +27,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import akka.util.Timeout
-import it.pagopa.interop.commons.jwt.{ADMIN_ROLE, API_ROLE, M2M_ROLE, authorizeInterop, hasPermissions}
+import it.pagopa.interop.commons.jwt.{ADMIN_ROLE, API_ROLE, INTERNAL_ROLE, M2M_ROLE, authorizeInterop, hasPermissions}
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.OperationForbidden
 
 import scala.concurrent.duration._
@@ -311,7 +311,7 @@ class AttributeApiServiceImpl(
   override def loadCertifiedAttributes()(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
+  ): Route = authorize(INTERNAL_ROLE) {
     val result = for {
       bearer     <- getFutureBearer(contexts)
       categories <- partyRegistryService.getCategories(bearer)
