@@ -27,6 +27,9 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import akka.util.Timeout
+import it.pagopa.interop.commons.jwt.{ADMIN_ROLE, API_ROLE, INTERNAL_ROLE, M2M_ROLE, authorizeInterop, hasPermissions}
+import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.OperationForbidden
+
 import scala.concurrent.duration._
 
 class AttributeApiServiceImpl(
@@ -51,6 +54,16 @@ class AttributeApiServiceImpl(
 
   @inline private def getShard(id: String): String = (math.abs(id.hashCode) % settings.numberOfShards).toString
 
+  private[this] def authorize(roles: String*)(
+    route: => Route
+  )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route =
+    authorizeInterop(
+      hasPermissions(roles: _*),
+      Problem(Option(OperationForbidden.getMessage), status = 403, "Operation forbidden")
+    ) {
+      route
+    }
+
   /** Code: 201, Message: Attribute created, DataType: Attribute
     * Code: 400, Message: Bad Request, DataType: Problem
     */
@@ -58,7 +71,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE) {
     logger.info("Creating attribute {}", attributeSeed.name)
 
     validateAttributeName(attributeByCommand(GetAttributeByName, attributeSeed.name)) match {
@@ -90,7 +103,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
     logger.info("Retrieving attribute {}", attributeId)
     val commander: EntityRef[Command]          =
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
@@ -110,7 +123,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
     logger.info("Retrieving attribute named {}", name)
     attributeByCommand(GetAttributeByName, name) match {
       case Some(attribute) => getAttributeByName200(toAPI(attribute))
@@ -127,7 +140,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
     logger.info("Retrieving attributes by search string = {}", search)
     val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards).map(shard =>
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard.toString)
@@ -151,7 +164,7 @@ class AttributeApiServiceImpl(
   override def getBulkedAttributes(ids: Option[String])(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]
-  ): Route = {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE) {
     logger.info("Retrieving attributes in bulk fashion by identifiers in ({})", ids)
     val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(ids.getOrElse("").split(",").toList) { id =>
       val commander: EntityRef[Command] = {
@@ -256,7 +269,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE) {
     logger.info("Creating attributes set...")
     validateAttributes(attributeSeed) match {
 
@@ -285,7 +298,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = {
+  ): Route = authorize(ADMIN_ROLE) {
     logger.info(s"Retrieving attribute having origin $origin and code $code")
     attributeByCommand(GetAttributeByInfo, AttributeInfo(origin, code)) match {
       case Some(attribute) => getAttributeByOriginAndCode200(toAPI(attribute))
@@ -298,7 +311,7 @@ class AttributeApiServiceImpl(
   override def loadCertifiedAttributes()(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = {
+  ): Route = authorize(INTERNAL_ROLE) {
     val result = for {
       bearer     <- getFutureBearer(contexts)
       categories <- partyRegistryService.getCategories(bearer)
@@ -329,26 +342,27 @@ class AttributeApiServiceImpl(
    */
   override def deleteAttributeById(
     attributeId: String
-  )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route = {
-    val commander: EntityRef[Command]     =
-      sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
-    val result: Future[StatusReply[Unit]] = commander.ask(ref => DeleteAttribute(attributeId, ref))
-    onComplete(result) {
-      case Success(statusReply) if statusReply.isSuccess => deleteAttributeById204
-      case Success(statusReply)                          =>
-        statusReply.getError match {
-          case AttributeNotFoundException =>
-            val problem = Problem(None, status = 404, "Attribute not found")
-            deleteAttributeById404(problem)
-          case ex                         =>
-            logger.error(s"Error while deleting attribute ${attributeId}", ex)
-            val problem = Problem(Option(ex.getMessage), status = 500, "Internal server error")
-            complete(StatusCodes.InternalServerError, problem)
-        }
-      case Failure(ex)                                   =>
-        logger.error(s"Error while deleting attribute ${attributeId}", ex)
-        val problem = Problem(Some(ex.getMessage), status = 500, "Internal server error")
-        complete(StatusCodes.InternalServerError, problem)
+  )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route =
+    authorize(ADMIN_ROLE, API_ROLE) {
+      val commander: EntityRef[Command]     =
+        sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
+      val result: Future[StatusReply[Unit]] = commander.ask(ref => DeleteAttribute(attributeId, ref))
+      onComplete(result) {
+        case Success(statusReply) if statusReply.isSuccess => deleteAttributeById204
+        case Success(statusReply)                          =>
+          statusReply.getError match {
+            case AttributeNotFoundException =>
+              val problem = Problem(None, status = 404, "Attribute not found")
+              deleteAttributeById404(problem)
+            case ex                         =>
+              logger.error(s"Error while deleting attribute ${attributeId}", ex)
+              val problem = Problem(Option(ex.getMessage), status = 500, "Internal server error")
+              complete(StatusCodes.InternalServerError, problem)
+          }
+        case Failure(ex)                                   =>
+          logger.error(s"Error while deleting attribute ${attributeId}", ex)
+          val problem = Problem(Some(ex.getMessage), status = 500, "Internal server error")
+          complete(StatusCodes.InternalServerError, problem)
+      }
     }
-  }
 }
