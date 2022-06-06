@@ -107,7 +107,7 @@ object Dependencies {
       Seq(jackson.annotations % Compile, jackson.core % Compile, jackson.databind % Compile)
     lazy val `server`: Seq[ModuleID]  = Seq(
       // For making Java 12 happy
-      "javax.annotation"          % "javax.annotation-api" % "1.3.2" % "compile",
+      "javax.annotation"          % "javax.annotation-api" % "1.3.2"    % "compile",
       //
       akka.actorTyped             % Compile,
       akka.clusterTyped           % Compile,
@@ -143,8 +143,8 @@ object Dependencies {
       pagopa.partyProxyClient     % Compile,
       scalaprotobuf.core          % Protobuf,
       akka.testkit                % Test,
-      scalamock.core              % Test,
-      scalatest.core              % Test
+      "org.scalameta"            %% "munit"                % "1.0.0-M4" % Test,
+      "org.scalameta"            %% "munit-scalacheck"     % "1.0.0-M4" % Test
     )
     lazy val client: Seq[ModuleID]    =
       Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.commons).map(
