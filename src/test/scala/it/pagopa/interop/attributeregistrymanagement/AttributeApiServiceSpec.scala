@@ -177,7 +177,7 @@ class AttributeApiServiceSpec
       val problem           = Unmarshal(response.entity).to[Problem].futureValue
 
       // then
-      response.status shouldBe StatusCodes.BadRequest
+      response.status shouldBe StatusCodes.Conflict
       problem.detail.get shouldBe "An attribute with name = 'pippo' already exists on the registry"
     }
   }
