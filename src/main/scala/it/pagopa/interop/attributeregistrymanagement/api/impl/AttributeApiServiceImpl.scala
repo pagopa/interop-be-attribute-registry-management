@@ -165,7 +165,6 @@ class AttributeApiServiceImpl(
         sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id))
       }
       commander.ask(ref => GetAttribute(id, ref))
-
     }
 
     onSuccess(result) { replies =>
