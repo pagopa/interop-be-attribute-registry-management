@@ -1,11 +1,13 @@
 package it.pagopa.interop.attributeregistrymanagement
 
 import cats.implicits._
-import munit.{FunSuite, FutureFixture}
+import munit.FutureFixture
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.testkit.typed.scaladsl.ActorTestKitBase
 
+import org.scalacheck.Gen
 import akka.actor.typed.ActorSystem
+import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshalling.{Marshal, ToEntityMarshaller}
 import akka.http.scaladsl.model._
@@ -38,8 +40,11 @@ import it.pagopa.interop.attributeregistrymanagement.server.Controller
 import it.pagopa.interop.commons.utils.AkkaUtils
 import it.pagopa.interop.attributeregistrymanagement.api.HealthApi
 import akka.actor
+import munit.ScalaCheckSuite
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
-trait AkkaTestSuite extends FunSuite {
+trait AkkaTestSuite extends ScalaCheckSuite {
 
   override def munitFixtures = List(actorSystem)
 
@@ -117,6 +122,8 @@ trait AkkaTestSuite extends FunSuite {
     override def afterAll(): Future[Unit] = Future.successful(testkit.shutdownTestKit())
   }
 
+  def await[T](future: Future[T]): T = Await.result(future, Duration.Inf)
+
   private val requestHeaders: Seq[HttpHeader] = Seq(
     headers.Authorization(OAuth2BearerToken("token")),
     headers.RawHeader("X-Correlation-Id", "test-id"),
@@ -136,17 +143,6 @@ trait AkkaTestSuite extends FunSuite {
       response <- execute("attributes", POST, HttpEntity(ContentTypes.`application/json`, data))
       body     <- Unmarshal(response.entity).to[T]
     } yield (response.status, body)
-  }
-
-  def createBulk(
-    seeds: List[AttributeSeed]
-  )(implicit actorSystem: ActorSystem[_]): Future[(StatusCode, List[Attribute])] = {
-    implicit val ec: ExecutionContext = actorSystem.executionContext
-    for {
-      data     <- Marshal(seeds).to[MessageEntity].map(_.dataBytes)
-      response <- execute("bulk/attributes", POST, HttpEntity(ContentTypes.`application/json`, data))
-      body     <- Unmarshal(response.entity).to[AttributesResponse]
-    } yield (response.status, body.attributes.toList)
   }
 
   def getAllAttributes(implicit actorSystem: ActorSystem[_]): Future[(StatusCode, List[Attribute])] = {
@@ -200,5 +196,52 @@ trait AkkaTestSuite extends FunSuite {
     Http().singleRequest(
       HttpRequest(uri = s"${AkkaTestConfiguration.serviceURL}/$path", method = verb, headers = requestHeaders)
     )
+
+  private val nameGenerator: Gen[String] = for {
+    nOfLetters <- Gen.chooseNum(5, 30)
+    name       <- Gen.stringOfN(nOfLetters, Gen.alphaChar)
+  } yield name
+
+  private val descriptionGenerator: Gen[String] = for {
+    nOfLetters <- Gen.chooseNum(5, 50)
+    name       <- Gen.stringOfN(nOfLetters, Gen.alphaChar)
+  } yield name
+
+  private val originGenerator: Gen[Option[String]] = Gen.stringOfN(3, Gen.alphaUpperChar).map(Option(_))
+
+  val attribute: Gen[Attribute] = for {
+    uuid        <- Gen.uuid.map(_.toString())
+    code        <- Gen.chooseNum(100, 50000).map(_.toString).map(Option(_))
+    kind        <- Gen.oneOf(CERTIFIED, DECLARED, VERIFIED)
+    description <- descriptionGenerator
+    origin      <- originGenerator
+    name        <- nameGenerator
+  } yield Attribute(uuid, code, kind, description, origin, name, OffsetDateTime.now())
+
+  val attributesSeed: Gen[AttributeSeed] = for {
+    code        <- Gen.chooseNum(100, 50000).map(_.toString).map(Option(_))
+    kind        <- Gen.oneOf(CERTIFIED, DECLARED, VERIFIED)
+    description <- descriptionGenerator
+    origin      <- originGenerator
+    name        <- nameGenerator
+  } yield AttributeSeed(code, kind, description, origin, name)
+
+  val attributeAndSeed: Gen[(Attribute, AttributeSeed)] = for {
+    uuid        <- Gen.uuid.map(_.toString())
+    code        <- Gen.chooseNum(100, 50000).map(_.toString).map(Option(_))
+    kind        <- Gen.oneOf(CERTIFIED, DECLARED, VERIFIED)
+    description <- descriptionGenerator
+    origin      <- originGenerator
+    name        <- nameGenerator
+  } yield (
+    Attribute(uuid, code, kind, description, origin, name, OffsetDateTime.now()),
+    AttributeSeed(code, kind, description, origin, name)
+  )
+
+  def attributesTestCase(n: Int): Gen[(List[AttributeSeed], List[Attribute])] =
+    Gen
+      .containerOfN[List, (Attribute, AttributeSeed)](n, attributeAndSeed)
+      .map(_.distinctBy(_._2.name))
+      .map(list => (list.map(_._2), list.map(_._1)))
 
 }

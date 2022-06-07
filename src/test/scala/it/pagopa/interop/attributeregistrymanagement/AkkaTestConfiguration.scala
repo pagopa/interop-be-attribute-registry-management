@@ -24,6 +24,7 @@ object AkkaTestConfiguration {
       akka.coordinated-shutdown.run-by-actor-system-terminate = off
       akka.coordinated-shutdown.run-by-jvm-shutdown-hook = off
       akka.cluster.run-coordinated-shutdown-when-down = off
+      akka.http.host-connection-pool.max-open-requests = 1000
     """)
 
   val config: Config = ConfigFactory
