@@ -1,279 +1,139 @@
 package it.pagopa.interop.attributeregistrymanagement
 
-import akka.actor
-import akka.actor.testkit.typed.scaladsl.{ActorTestKit, ScalaTestWithActorTestKit}
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.scaladsl.Behaviors
-import akka.cluster.sharding.typed.ShardingEnvelope
-import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
-import akka.cluster.typed.{Cluster, Join}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.directives.SecurityDirectives
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import it.pagopa.interop.attributeregistrymanagement.api.impl.{AttributeApiMarshallerImpl, AttributeApiServiceImpl}
-import it.pagopa.interop.attributeregistrymanagement.api.{
-  AttributeApi,
-  AttributeApiMarshaller,
-  AttributeApiService,
-  HealthApi
-}
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
-import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeKind, AttributeSeed, Problem}
-import it.pagopa.interop.attributeregistrymanagement.server.Controller
-import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.behaviorFactory
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
-
+import cats.implicits._
+import org.scalacheck.Prop._
+import akka.http.scaladsl.model.StatusCodes._
+import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, Problem}
+import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
 import java.time.OffsetDateTime
 import java.util.UUID
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
-class AttributeApiServiceSpec
-    extends ScalaTestWithActorTestKit(AkkaTestConfiguration.config)
-    with AnyWordSpecLike
-    with Matchers {
+import akka.actor.typed.ActorSystem
+import munit.Compare
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 
-  val partyApiMarshaller: AttributeApiMarshaller = new AttributeApiMarshallerImpl
+class AttributeApiServiceSpec extends AkkaTestSuite {
 
-  var controller: Option[Controller]                 = None
-  var bindServer: Option[Future[Http.ServerBinding]] = None
-  val sharding: ClusterSharding                      = ClusterSharding(system)
+  implicit val equality: Compare[Attribute, Attribute] = (a: Attribute, b: Attribute) =>
+    a.code == b.code &&
+      a.kind == b.kind &&
+      a.description == b.description &&
+      a.origin == b.origin &&
+      a.name == b.name
 
-  val httpSystem: ActorSystem[Any]                        =
-    ActorSystem(Behaviors.ignore[Any], name = system.name, config = system.settings.config)
-  implicit val executionContext: ExecutionContextExecutor = httpSystem.executionContext
-  implicit val classicSystem: actor.ActorSystem           = httpSystem.classicSystem
+  implicit val listEquality: Compare[List[Attribute], List[Attribute]] = (as: List[Attribute], bs: List[Attribute]) =>
+    as.sortBy(_.name).zip(bs.sortBy(_.name)).forall { case (a, b) => equality.isEqual(a, b) }
 
-  override def beforeAll(): Unit = {
+  property("Attribute API should create and delete any attribute") {
+    implicit val as: ActorSystem[Nothing] = actorSystem()
+    implicit val ec: ExecutionContext     = as.executionContext
 
-    Cluster(system).manager ! Join(Cluster(system).selfMember.address)
+    forAll(attributeAndSeed) { case (attribute: Attribute, seed: AttributeSeed) =>
+      val result = for {
+        (status, createdAttribute) <- createAttribute[Attribute](seed)
+        delStatus                  <- deleteAttribute(createdAttribute.id)
+      } yield (status, createdAttribute, delStatus)
 
-    val persistentEntity: Entity[Command, ShardingEnvelope[Command]] =
-      Entity(AttributePersistentBehavior.TypeKey)(behaviorFactory)
-
-    sharding.init(persistentEntity)
-
-    val wrappingDirective = SecurityDirectives.authenticateOAuth2("SecurityRealm", AdminMockAuthenticator)
-
-    val partyApiService: AttributeApiService =
-      new AttributeApiServiceImpl(
-        uuidSupplier,
-        timeSupplier,
-        system,
-        sharding,
-        persistentEntity,
-        mockPartyRegistryService
-      )
-
-    val attributeApi: AttributeApi =
-      new AttributeApi(partyApiService, partyApiMarshaller, wrappingDirective)
-
-    val healthApi: HealthApi = mock[HealthApi]
-
-    controller = Some(new Controller(attributeApi, healthApi)(classicSystem))
-
-    controller foreach { controller =>
-      bindServer = Some(
-        Http()
-          .newServerAt("0.0.0.0", 8088)
-          .bind(controller.routes)
-      )
-
-      Await.result(bindServer.get, 100.seconds)
-    }
-
-  }
-
-  override def afterAll(): Unit = {
-    bindServer.foreach(_.foreach(_.unbind()))
-    ActorTestKit.shutdown(httpSystem, 5.seconds)
-    super.afterAll()
-  }
-
-  "Attribute API" should {
-
-    "create an attribute" in {
-      // given
-      val mockUUID = UUID.randomUUID()
-      val time     = OffsetDateTime.now()
-      (() => uuidSupplier.get).expects().returning(mockUUID).once()
-      (() => timeSupplier.get).expects().returning(time).once()
-
-      val expected = Attribute(
-        id = mockUUID.toString,
-        code = Some("123"),
-        kind = AttributeKind.CERTIFIED,
-        description = "this is a test",
-        origin = Some("IPA"),
-        name = "test",
-        creationTime = time
-      )
-
-      // when
-      val requestPayload = AttributeSeed(
-        code = Some("123"),
-        kind = AttributeKind.CERTIFIED,
-        description = "this is a test",
-        origin = Some("IPA"),
-        name = "test"
-      )
-      val response       = createAttribute(buildPayload(requestPayload))
-      val body           = Unmarshal(response.entity).to[Attribute].futureValue
-
-      // then
-      response.status shouldBe StatusCodes.Created
-      body shouldBe expected
-    }
-
-    "delete an attribute" in {
-      // given
-      val mockUUID = UUID.randomUUID()
-      val time     = OffsetDateTime.now()
-      (() => uuidSupplier.get).expects().returning(mockUUID).once()
-      (() => timeSupplier.get).expects().returning(time).once()
-
-      // when
-      val requestPayload = AttributeSeed(
-        code = Some("123"),
-        kind = AttributeKind.CERTIFIED,
-        description = "this is a test",
-        origin = Some("IPA"),
-        name = "deletable"
-      )
-
-      createAttribute(buildPayload(requestPayload))
-
-      val response = deleteAttribute(mockUUID.toString)
-      // then
-      response.status shouldBe StatusCodes.NoContent
-    }
-
-    "reject attribute creation when an attribute with the same name already exists" in {
-      // given an attribute registry
-      val mockUUID = "a7aa1933-b966-0fc2-05a4-e1e0e4661511"
-      (() => uuidSupplier.get).expects().returning(UUID.fromString(mockUUID)).once()
-      (() => timeSupplier.get).expects().returning(OffsetDateTime.now()).once()
-
-      val requestPayload = AttributeSeed(
-        code = Some("123"),
-        kind = AttributeKind.CERTIFIED,
-        description = "this is a test",
-        origin = Some("IPA"),
-        name = "pippo"
-      )
-      createAttribute(buildPayload(requestPayload))
-
-      // when
-      val requestPayloadNew = AttributeSeed(
-        code = Some("444"),
-        kind = AttributeKind.CERTIFIED,
-        description = "Test duplicate name",
-        origin = None,
-        name = "pippo"
-      )
-      val response          = createAttribute(buildPayload(requestPayloadNew))
-      val problem           = Unmarshal(response.entity).to[Problem].futureValue
-
-      // then
-      response.status shouldBe StatusCodes.BadRequest
-      problem.detail.get shouldBe "An attribute with name = 'pippo' already exists on the registry"
+      val (status, createdAttribute, delStatus) = await(result)
+      assertEquals(status, Created)
+      assertEquals(delStatus, NoContent)
+      assertEquals(createdAttribute, attribute)
     }
   }
 
-  "find an attribute by name" in {
-    // given
-    val mockUUID = UUID.randomUUID()
-    val time     = OffsetDateTime.now()
-    (() => uuidSupplier.get).expects().returning(mockUUID).once()
-    (() => timeSupplier.get).expects().returning(time).once()
+  property("Attribute API should reject attribute creation when an attribute with the same name already exists") {
+    implicit val as: ActorSystem[Nothing] = actorSystem()
+    implicit val ec: ExecutionContext     = as.executionContext
+
+    forAll(attributeAndSeed) { case (attribute: Attribute, seed: AttributeSeed) =>
+      val result = for {
+        (_, created)      <- createAttribute[Attribute](seed)
+        (status, problem) <- createAttribute[Problem](seed)
+        delStatus         <- deleteAttribute(created.id)
+      } yield (status, problem, delStatus)
+
+      val (status, problem, delStatus) = await(result)
+      assertEquals(status, Conflict)
+      assertEquals(problem.detail.get, s"An attribute with name = '${attribute.name}' already exists on the registry")
+      assertEquals(delStatus, NoContent)
+    }
+  }
+
+  property("Attribute API should find an attribute by name") {
+    implicit val as: ActorSystem[Nothing] = actorSystem()
+    implicit val ec: ExecutionContext     = as.executionContext
+
+    forAll(attributeAndSeed) { case (attribute: Attribute, seed: AttributeSeed) =>
+      val result = for {
+        (_, created)             <- createAttribute[Attribute](seed)
+        (status, foundAttribute) <- findAttributeByName(created.name)
+        delStatus                <- deleteAttribute(created.id)
+      } yield (status, foundAttribute, delStatus)
+
+      val (status, foundAttribute, delStatus) = await(result)
+      assertEquals(status, OK)
+      assertEquals(foundAttribute, attribute)
+      assertEquals(delStatus, NoContent)
+    }
+  }
+
+  property("Attribute API should find an attribute by origin and code") {
+    implicit val as: ActorSystem[Nothing] = actorSystem()
+    implicit val ec: ExecutionContext     = as.executionContext
+
+    forAll(attributeAndSeed) { case (attribute: Attribute, seed: AttributeSeed) =>
+      val result = for {
+        (_, created)             <- createAttribute[Attribute](seed)
+        (status, foundAttribute) <- findAttributeByOriginAndCode(created.origin.get, created.code.get)
+        delStatus                <- deleteAttribute(created.id)
+      } yield (status, foundAttribute, delStatus)
+
+      val (status, foundAttribute, delStatus) = await(result)
+      assertEquals(status, OK)
+      assertEquals(foundAttribute, attribute)
+      assertEquals(delStatus, NoContent)
+    }
+  }
+
+  test("Attribute API should load attributes from proxy") {
+    implicit val as: ActorSystem[Nothing] = actorSystem()
+    implicit val ec: ExecutionContext     = as.executionContext
 
     val expected = Attribute(
-      id = mockUUID.toString,
-      code = Some("999"),
-      kind = AttributeKind.CERTIFIED,
-      description = "Bar Foo",
-      origin = Some("IPA"),
-      name = "BarFoo",
-      creationTime = time
-    )
-
-    // when
-    val requestPayload = AttributeSeed(
-      code = Some("999"),
-      kind = AttributeKind.CERTIFIED,
-      description = "Bar Foo",
-      origin = Some("IPA"),
-      name = "BarFoo"
-    )
-    createAttribute(buildPayload(requestPayload))
-
-    // then
-    val response = findAttributeByName("BarFoo")
-    val body     = Unmarshal(response.entity).to[Attribute].futureValue
-    response.status shouldBe StatusCodes.OK
-    body shouldBe expected
-  }
-
-  "find an attribute by origin and code" in {
-    // given
-    val mockUUID = UUID.randomUUID()
-    val time     = OffsetDateTime.now()
-    (() => uuidSupplier.get).expects().returning(mockUUID).once()
-    (() => timeSupplier.get).expects().returning(time).once()
-
-    val expected = Attribute(
-      id = mockUUID.toString,
-      code = Some("1984"),
-      kind = AttributeKind.CERTIFIED,
-      description = "Foo bar",
-      origin = Some("IPA"),
-      name = "FooBar",
-      creationTime = time
-    )
-
-    // when
-    val requestPayload = AttributeSeed(
-      code = Some("1984"),
-      kind = AttributeKind.CERTIFIED,
-      description = "Foo bar",
-      origin = Some("IPA"),
-      name = "FooBar"
-    )
-
-    createAttribute(buildPayload(requestPayload))
-
-    // then
-    val response = findAttributeByOriginAndCode("IPA", "1984")
-    val body     = Unmarshal(response.entity).to[Attribute].futureValue
-    response.status shouldBe StatusCodes.OK
-    body shouldBe expected
-  }
-
-  "load attributes from proxy" in {
-    // given
-    val mockUUID = UUID.randomUUID()
-    val time     = OffsetDateTime.now()
-    (() => uuidSupplier.get).expects().returning(mockUUID).once()
-    (() => timeSupplier.get).expects().returning(time).once()
-
-    val expected = Attribute(
-      id = mockUUID.toString,
+      id = UUID.randomUUID().toString,
       code = Some("YADA"),
-      kind = AttributeKind.CERTIFIED,
+      kind = CERTIFIED,
       description = "Proxied",
       origin = Some("IPA"),
       name = "Proxied",
-      creationTime = time
+      creationTime = OffsetDateTime.now()
     )
 
-    loadAttributes
-
-    // then
-    val response = findAttributeByName("Proxied")
-    val body     = Unmarshal(response.entity).to[Attribute].futureValue
-    response.status shouldBe StatusCodes.OK
-    body shouldBe expected
+    for {
+      _                   <- loadAttributes
+      (status, attribute) <- findAttributeByName("Proxied")
+    } yield {
+      assertEquals(status, OK)
+      assertEquals(attribute, expected)
+    }
   }
+
+  property("Attribute API should bulk create and get any attribute") {
+    implicit val as: ActorSystem[Nothing] = actorSystem()
+    implicit val ec: ExecutionContext     = as.executionContext
+
+    forAll(attributesTestCase(120)) { case (seeds: List[AttributeSeed], attributes: List[Attribute]) =>
+      val result = for {
+        _                           <- Future.traverse(seeds)(createAttribute[Attribute])
+        (status, createdAttributes) <- getAllAttributes
+        _                           <- Future.traverse(createdAttributes.map(_.id))(deleteAttribute)
+      } yield (status, createdAttributes)
+
+      val (status, createdAttributes) = await(result)
+      assertEquals(status, OK)
+      assertEquals(createdAttributes, attributes)
+    }
+  }
+
 }

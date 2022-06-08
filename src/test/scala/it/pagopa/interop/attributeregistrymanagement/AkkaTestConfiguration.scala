@@ -8,7 +8,7 @@ import it.pagopa.interop.commons.utils.{BEARER, USER_ROLES}
 
 /** Selfless trait containing base test configuration for Akka Cluster Setup
   */
-trait AkkaTestConfiguration {
+object AkkaTestConfiguration {
   val testData: Config = ConfigFactory.parseString(s"""
       akka.actor.provider = cluster
 
@@ -24,6 +24,7 @@ trait AkkaTestConfiguration {
       akka.coordinated-shutdown.run-by-actor-system-terminate = off
       akka.coordinated-shutdown.run-by-jvm-shutdown-hook = off
       akka.cluster.run-coordinated-shutdown-when-down = off
+      akka.http.host-connection-pool.max-open-requests = 1000
     """)
 
   val config: Config = ConfigFactory
@@ -32,8 +33,6 @@ trait AkkaTestConfiguration {
 
   def serviceURL: String = s"${config.getString("application.url")}${buildinfo.BuildInfo.interfaceVersion}"
 }
-
-object AkkaTestConfiguration extends AkkaTestConfiguration
 
 //mocks admin user role rights for every call
 object AdminMockAuthenticator extends Authenticator[Seq[(String, String)]] {
