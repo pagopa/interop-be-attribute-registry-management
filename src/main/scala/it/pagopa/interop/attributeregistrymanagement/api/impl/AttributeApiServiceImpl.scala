@@ -21,6 +21,7 @@ import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryServic
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.AkkaUtils.getFutureBearer
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
+import it.pagopa.interop.attributeregistrymanagement.common.system.errors._
 import com.typesafe.scalalogging.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,7 +31,6 @@ import it.pagopa.interop.commons.jwt.{ADMIN_ROLE, API_ROLE, INTERNAL_ROLE, M2M_R
 import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.OperationForbidden
 
 import scala.concurrent.duration._
-import scala.util.control.NoStackTrace
 
 class AttributeApiServiceImpl(
   uuidSupplier: UUIDSupplier,
@@ -61,8 +61,6 @@ class AttributeApiServiceImpl(
       hasPermissions(roles: _*),
       Problem(Option(OperationForbidden.getMessage), status = 403, "Operation forbidden")
     )(route)
-
-  case class AttributeAlreadyPresentException(name: String) extends NoStackTrace
 
   override def createAttribute(attributeSeed: AttributeSeed)(implicit
     contexts: Seq[(String, String)],
@@ -179,11 +177,8 @@ class AttributeApiServiceImpl(
       .map(n => GetAttributes(n, n + sliceSize - 1, _))
 
     // It's stack safe since every submission to an Execution context resets the stack, creating a trampoline effect
-    def loop(acc: List[Attribute]): Future[List[Attribute]] = {
-      val command: ActorRef[Seq[Attribute]] => GetAttributes = commandIterator.next()
-      commander.ask(command).recoverWith(_ => commander.ask(command)).flatMap { slice =>
-        if (slice.isEmpty) Future.successful(acc) else loop(acc ++ slice)
-      }
+    def loop(acc: List[Attribute]): Future[List[Attribute]] = commander.ask(commandIterator.next()).flatMap { slice =>
+      if (slice.isEmpty) Future.successful(acc) else loop(acc ++ slice)
     }
 
     loop(List.empty[Attribute])
@@ -192,27 +187,21 @@ class AttributeApiServiceImpl(
   private def attributeByCommand(
     command: ActorRef[Option[PersistentAttribute]] => Command
   ): Future[Option[PersistentAttribute]] = {
+
     // It's stack safe since every submission to an Execution context resets the stack, creating a trampoline effect
-    def loop(
-      shards: List[EntityRef[Command]],
-      command: ActorRef[Option[PersistentAttribute]] => Command
-    ): Future[Option[PersistentAttribute]] =
+    def loop(shards: List[EntityRef[Command]]): Future[Option[PersistentAttribute]] =
       shards.headOption.fold(Future.successful(Option.empty[PersistentAttribute]))(shard =>
-        shard
-          .ask(command)
-          .recoverWith(_ => shard.ask(command)) // Let's retry immediately just once
-          .flatMap {
-            case x @ Some(_) => Future.successful(x)
-            case None        => loop(shards.tail, command)
-          }
+        shard.ask(command).flatMap {
+          case x @ Some(_) => Future.successful(x)
+          case None        => loop(shards.tail)
+        }
       )
 
-    val shards: List[EntityRef[Command]] =
-      (0 until settings.numberOfShards).toList
-        .map(_.toString())
-        .map(sharding.entityRefFor(AttributePersistentBehavior.TypeKey, _))
+    val shards: List[EntityRef[Command]] = (0 until settings.numberOfShards).toList
+      .map(_.toString())
+      .map(sharding.entityRefFor(AttributePersistentBehavior.TypeKey, _))
 
-    loop(shards, command)
+    loop(shards)
   }
 
   case class DeltaAttributes(attributes: Set[Attribute], seeds: Set[AttributeSeed]) {
