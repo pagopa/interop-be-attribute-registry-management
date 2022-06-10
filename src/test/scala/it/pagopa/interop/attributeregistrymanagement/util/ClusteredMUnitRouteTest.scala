@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 
 trait MUnitRouteTest extends RouteTest with MUnitTestFrameworkInterface { this: munit.FunSuite => }
 
-trait ClusteredScalatestRouteTest extends MUnitRouteTest {
+trait ClusteredMUnitRouteTest extends MUnitRouteTest {
   suite: FunSuite =>
   // the Akka HTTP route testkit does not yet support a typed actor system (https://github.com/akka/akka-http/issues/2036)
   // so we have to adapt for now

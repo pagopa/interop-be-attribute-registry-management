@@ -9,7 +9,7 @@ import it.pagopa.interop.attributeregistrymanagement.model.{AttributeKind, Attri
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.Command
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.attributePersistentEntity
 import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
-import it.pagopa.interop.attributeregistrymanagement.util.ClusteredScalatestRouteTest
+import it.pagopa.interop.attributeregistrymanagement.util.ClusteredMUnitRouteTest
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.interop.partyregistryproxy.client.model.Categories
 import munit.FunSuite
@@ -18,7 +18,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 import scala.concurrent.Future
 
-class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredScalatestRouteTest {
+class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest {
 
   override val testPersistentEntity: Entity[Command, ShardingEnvelope[Command]] = attributePersistentEntity
 
