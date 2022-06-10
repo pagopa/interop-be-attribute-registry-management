@@ -1,0 +1,67 @@
+{
+  "endpoints": [
+    {
+      "verb": "POST",
+      "roles": [
+        "admin", "api"
+      ],
+      "route": "createAttribute"
+    },
+    {
+      "verb": "GET",
+      "roles": [
+        "admin", "api", "m2m"
+      ],
+      "route": "getAttributeById"
+    },
+    {
+      "verb": "GET",
+      "roles": [
+        "admin", "api", "m2m"
+      ],
+      "route": "getAttributeByName"
+    },
+    {
+      "verb": "GET",
+      "roles": [
+        "admin", "api", "m2m"
+      ],
+      "route": "getAttributes"
+    },
+    {
+      "verb": "GET",
+      "roles": [
+        "admin", "api"
+      ],
+      "route": "getBulkedAttributes"
+    },
+    {
+      "verb": "POST",
+      "roles": [
+        "admin", "api"
+      ],
+      "route": "createAttributes"
+    },
+    {
+      "verb": "GET",
+      "roles": [
+        "admin"
+      ],
+      "route": "getAttributeByOriginAndCode"
+    },
+    {
+      "verb": "GET",
+      "roles": [
+        "internal"
+      ],
+      "route": "loadCertifiedAttributes"
+    },
+    {
+      "verb": "DELETE",
+      "roles": [
+        "admin", "api"
+      ],
+      "route": "deleteAttributeById"
+    }
+  ]
+}
