@@ -34,6 +34,7 @@ object Dependencies {
     lazy val slickHikari      = "com.typesafe.slick" %% "slick-hikaricp"               % slickVersion
     lazy val stream           = namespace            %% "akka-stream-typed"            % akkaVersion
     lazy val testkit          = namespace            %% "akka-actor-testkit-typed"     % akkaVersion
+    lazy val httpTestkit      = namespace            %% "akka-http-testkit"            % akkaHttpVersion
   }
 
   private[this] object postgres {
@@ -143,6 +144,7 @@ object Dependencies {
       pagopa.partyProxyClient     % Compile,
       scalaprotobuf.core          % Protobuf,
       akka.testkit                % Test,
+      akka.httpTestkit            % Test,
       "org.scalameta"            %% "munit"                % "1.0.0-M4" % Test,
       "org.scalameta"            %% "munit-scalacheck"     % "1.0.0-M4" % Test
     )

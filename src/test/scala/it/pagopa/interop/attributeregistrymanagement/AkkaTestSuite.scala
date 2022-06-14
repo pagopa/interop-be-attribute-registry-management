@@ -73,7 +73,7 @@ trait AkkaTestSuite extends ScalaCheckSuite {
 
       val uuidSupplier: UUIDSupplier                 = new UUIDSupplier { def get = UUID.randomUUID() }
       val timeSupplier: OffsetDateTimeSupplier       = new OffsetDateTimeSupplier { def get = OffsetDateTime.now() }
-      val partyApiMarshaller: AttributeApiMarshaller = new AttributeApiMarshallerImpl
+      val partyApiMarshaller: AttributeApiMarshaller = AttributeApiMarshallerImpl
 
       val partyRegistryService: PartyRegistryService = new PartyRegistryService {
         override def getCategories(bearerToken: String)(implicit contexts: Seq[(String, String)]): Future[Categories] =
