@@ -1,28 +1,23 @@
 package it.pagopa.interop.attributeregistrymanagement.server.impl
 
-import it.pagopa.interop.commons.utils.TypeConversions._
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityContext, ShardedDaemonProcess}
 import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.SecurityDirectives
 import akka.persistence.typed.PersistenceId
 import akka.projection.ProjectionBehavior
+import com.atlassian.oai.validator.report.ValidationReport
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
-import it.pagopa.interop.attributeregistrymanagement.api.impl.{
-  AttributeApiMarshallerImpl,
-  AttributeApiServiceImpl,
-  HealthApiMarshallerImpl,
-  HealthServiceApiImpl
-}
+import it.pagopa.interop.attributeregistrymanagement.api.impl._
 import it.pagopa.interop.attributeregistrymanagement.api.{AttributeApi, HealthApi}
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration.{
   numberOfProjectionTags,
   projectionTag
 }
-import it.pagopa.interop.attributeregistrymanagement.api.impl._
 import it.pagopa.interop.attributeregistrymanagement.model.Problem
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.{
   AttributePersistentBehavior,
@@ -36,17 +31,14 @@ import it.pagopa.interop.commons.jwt.service.impl.{DefaultJWTReader, getClaimsVe
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, KID, PublicKeysHolder, SerializedKey}
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
+import it.pagopa.interop.commons.utils.TypeConversions._
+import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
 import it.pagopa.interop.partyregistryproxy.client.api.CategoryApi
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
-import it.pagopa.interop.commons.utils.service.UUIDSupplier
-import it.pagopa.interop.commons.utils.service.OffsetDateTimeSupplier
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import com.atlassian.oai.validator.report.ValidationReport
-import akka.http.scaladsl.server.Route
+import scala.concurrent.{ExecutionContext, Future}
 
 trait Dependencies {
 
@@ -108,21 +100,20 @@ trait Dependencies {
       attributePersistentEntity,
       partyProcessService()
     ),
-    new AttributeApiMarshallerImpl(),
+    AttributeApiMarshallerImpl,
     jwtReader.OAuth2JWTValidatorAsContexts
   )
 
   val healthApi: HealthApi = new HealthApi(
     new HealthServiceApiImpl(),
     new HealthApiMarshallerImpl(),
-    SecurityDirectives.authenticateOAuth2("SecurityRealm", PassThroughAuthenticator)
+    SecurityDirectives.authenticateOAuth2("SecurityRealm", PassThroughAuthenticator),
+    loggingEnabled = false
   )
 
   val validationExceptionToRoute: ValidationReport => Route = report => {
     val message = OpenapiUtils.errorFromRequestValidationReport(report)
-    complete(400, Problem(Some(message), 400, "bad request"))(
-      new AttributeApiMarshallerImpl().toEntityMarshallerProblem
-    )
+    complete(400, Problem(Some(message), 400, "bad request"))(AttributeApiMarshallerImpl.toEntityMarshallerProblem)
   }
 
 }
