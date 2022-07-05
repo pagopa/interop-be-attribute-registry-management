@@ -2,6 +2,7 @@ target/
 .idea
 project/project
 project/target
+snapshots/
 .vscode
 metals.sbt
 .bloop
