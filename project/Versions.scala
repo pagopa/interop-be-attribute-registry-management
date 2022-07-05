@@ -2,7 +2,7 @@ object Versions {
   lazy val akkaHttpVersion        = "10.2.6"
   lazy val akkaManagementVersion  = "1.0.10"
   lazy val akkaVersion            = "2.6.17"
-  lazy val catsVersion            = "2.7.0"
+  lazy val catsVersion            = "2.8.0"
   lazy val httpJson4sVersion      = "1.38.2"
   lazy val jacksonVersion         = "2.11.4"
   lazy val jdbcPersistenceVersion = "5.0.1"
