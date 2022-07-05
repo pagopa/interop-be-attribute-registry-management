@@ -2,22 +2,21 @@ package it.pagopa.interop.attributeregistrymanagement.common.system
 
 import com.typesafe.config.{Config, ConfigFactory}
 
-import scala.jdk.CollectionConverters.ListHasAsScala
-
 object ApplicationConfiguration {
+  System.setProperty("kanela.show-banner", "false")
+  val config: Config = ConfigFactory.load()
 
-  lazy val config: Config = ConfigFactory.load()
-
-  lazy val serverPort: Int             = config.getInt("attribute-registry-management.port")
-  lazy val numberOfProjectionTags: Int = config.getInt("akka.cluster.sharding.number-of-shards")
+  val serverPort: Int             = config.getInt("attribute-registry-management.port")
+  val numberOfProjectionTags: Int = config.getInt("akka.cluster.sharding.number-of-shards")
 
   def projectionTag(index: Int) = s"interop-be-attribute-management-persistence|$index"
 
-  lazy val jwtAudience: Set[String] =
-    config.getStringList("attribute-registry-management.jwt.audience").asScala.toSet
+  val jwtAudience: Set[String] =
+    config.getString("attribute-registry-management.jwt.audience").split(",").toSet.filter(_.nonEmpty)
 
-  lazy val partyProxyUrl: String = config.getString("services.party-proxy")
+  val partyProxyUrl: String = config.getString("services.party-proxy")
 
-  lazy val projectionsEnabled: Boolean = config.getBoolean("akka.projection.enabled")
+  val projectionsEnabled: Boolean = config.getBoolean("akka.projection.enabled")
 
+  require(jwtAudience.nonEmpty, "Audience cannot be empty")
 }

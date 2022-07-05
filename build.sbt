@@ -5,6 +5,7 @@ ThisBuild / scalaVersion        := "2.13.8"
 ThisBuild / organization        := "it.pagopa"
 ThisBuild / organizationName    := "Pagopa S.p.A."
 ThisBuild / libraryDependencies := Dependencies.Jars.`server`
+Global / onChangedBuildSource   := ReloadOnSourceChanges
 
 ThisBuild / dependencyOverrides ++= Dependencies.Jars.overrides
 ThisBuild / version := ComputeVersion.version
@@ -50,7 +51,12 @@ generateCode := {
              |                               -p apiPackage=it.pagopa.${packagePrefix.value}.client.api
              |                               -p dateLibrary=java8
              |                               -o client""".stripMargin).!!
+}
 
+val runStandalone = inputKey[Unit]("Run the app using standalone configuration")
+runStandalone := {
+  task(System.setProperty("config.file", "src/main/resources/application-standalone.conf")).value
+  (Compile / run).evaluated
 }
 
 (Compile / compile) := ((Compile / compile) dependsOn generateCode).value

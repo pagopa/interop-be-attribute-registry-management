@@ -14,8 +14,7 @@ final case class State(attributes: Map[String, PersistentAttribute]) extends Per
 
   def getAttributeByAttributeInfo(attributeInfo: AttributeInfo): Option[PersistentAttribute] =
     attributes.values.find(attribute =>
-      attribute.origin.contains(attributeInfo.origin) &&
-        attribute.code.contains(attributeInfo.code)
+      attribute.origin.contains(attributeInfo.origin) && attribute.code.contains(attributeInfo.code)
     )
 }
 

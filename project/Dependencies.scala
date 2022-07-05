@@ -34,11 +34,12 @@ object Dependencies {
     lazy val slickHikari      = "com.typesafe.slick" %% "slick-hikaricp"               % slickVersion
     lazy val stream           = namespace            %% "akka-stream-typed"            % akkaVersion
     lazy val testkit          = namespace            %% "akka-actor-testkit-typed"     % akkaVersion
+    lazy val httpTestkit      = namespace            %% "akka-http-testkit"            % akkaHttpVersion
   }
 
   private[this] object postgres {
     lazy val namespace = "org.postgresql"
-    lazy val jdbc      = namespace % "postgresql" % "42.3.3"
+    lazy val jdbc      = namespace % "postgresql" % "42.4.0"
   }
 
   lazy val Protobuf = "protobuf"
@@ -107,7 +108,7 @@ object Dependencies {
       Seq(jackson.annotations % Compile, jackson.core % Compile, jackson.databind % Compile)
     lazy val `server`: Seq[ModuleID]  = Seq(
       // For making Java 12 happy
-      "javax.annotation"          % "javax.annotation-api" % "1.3.2" % "compile",
+      "javax.annotation"          % "javax.annotation-api" % "1.3.2"    % "compile",
       //
       akka.actorTyped             % Compile,
       akka.clusterTyped           % Compile,
@@ -143,16 +144,13 @@ object Dependencies {
       pagopa.partyProxyClient     % Compile,
       scalaprotobuf.core          % Protobuf,
       akka.testkit                % Test,
-      scalamock.core              % Test,
-      scalatest.core              % Test
+      akka.httpTestkit            % Test,
+      "org.scalameta"            %% "munit"                % "1.0.0-M6" % Test,
+      "org.scalameta"            %% "munit-scalacheck"     % "1.0.0-M6" % Test
     )
-    lazy val client: Seq[ModuleID]    = Seq(
-      akka.stream     % Compile,
-      akka.http       % Compile,
-      akka.httpJson4s % Compile,
-      akka.slf4j      % Compile,
-      json4s.jackson  % Compile,
-      json4s.ext      % Compile
-    )
+    lazy val client: Seq[ModuleID]    =
+      Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.commons).map(
+        _ % Compile
+      )
   }
 }

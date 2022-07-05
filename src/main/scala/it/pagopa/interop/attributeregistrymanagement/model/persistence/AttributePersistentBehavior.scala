@@ -64,7 +64,7 @@ object AttributePersistentBehavior {
 
       case Idle =>
         shard ! ClusterSharding.Passivate(context.self)
-        context.log.info(s"Passivate shard: ${shard.path.name}")
+        context.log.debug(s"Passivate shard: ${shard.path.name}")
         Effect.none[Event, State]
     }
   }
@@ -84,7 +84,7 @@ object AttributePersistentBehavior {
     projectionTag: String
   ): Behavior[Command] = {
     Behaviors.setup { context =>
-      context.log.info(
+      context.log.debug(
         s"Starting Attribute" +
           s" Shard ${persistenceId.id}"
       )
