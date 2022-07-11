@@ -8,7 +8,7 @@ package object service {
   type PartyProxyInvoker = ApiInvoker
   object PartyProxyInvoker {
     def apply(blockingEc: ExecutionContextExecutor)(implicit actorSystem: ActorSystem): PartyProxyInvoker =
-      ApiInvoker()(actorSystem, blockingEc)
+      ApiInvoker(blockingEc)(actorSystem)
   }
 
 }
