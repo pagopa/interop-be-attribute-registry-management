@@ -39,6 +39,7 @@ import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContextExecutor
 
 trait Dependencies {
 
@@ -72,9 +73,8 @@ trait Dependencies {
     )
   }
 
-  def getJwtValidator()(implicit ec: ExecutionContext): Future[JWTReader] = JWTConfiguration.jwtReader
+  def getJwtValidator(): Future[JWTReader] = JWTConfiguration.jwtReader
     .loadKeyset()
-    .toFuture
     .map(keyset =>
       new DefaultJWTReader with PublicKeysHolder {
         var publicKeyset: Map[KID, SerializedKey]                                        = keyset
@@ -82,13 +82,16 @@ trait Dependencies {
           getClaimsVerifier(audience = ApplicationConfiguration.jwtAudience)
       }
     )
+    .toFuture
 
-  private def partyProcessService()(implicit actorSystem: ActorSystem[_]): PartyRegistryService = {
+  private def partyProcessService(
+    blockingEc: ExecutionContextExecutor
+  )(implicit actorSystem: ActorSystem[_]): PartyRegistryService = {
     implicit val classic = actorSystem.classicSystem
-    PartyRegistryServiceImpl(PartyProxyInvoker(), CategoryApi(ApplicationConfiguration.partyProxyUrl))
+    PartyRegistryServiceImpl(PartyProxyInvoker(blockingEc), CategoryApi(ApplicationConfiguration.partyProxyUrl))
   }
 
-  def attributeApi(sharding: ClusterSharding, jwtReader: JWTReader)(implicit
+  def attributeApi(sharding: ClusterSharding, jwtReader: JWTReader, blockingEc: ExecutionContextExecutor)(implicit
     actorSystem: ActorSystem[_],
     ec: ExecutionContext
   ): AttributeApi = new AttributeApi(
@@ -98,7 +101,7 @@ trait Dependencies {
       actorSystem,
       sharding,
       attributePersistentEntity,
-      partyProcessService()
+      partyProcessService(blockingEc)
     ),
     AttributeApiMarshallerImpl,
     jwtReader.OAuth2JWTValidatorAsContexts

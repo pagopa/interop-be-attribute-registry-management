@@ -22,6 +22,7 @@ import buildinfo.BuildInfo
 import com.typesafe.scalalogging.Logger
 import scala.concurrent.Future
 import scala.util.{Success, Failure}
+import akka.actor.typed.DispatcherSelector
 
 object Main extends App with Dependencies {
 
@@ -31,6 +32,8 @@ object Main extends App with Dependencies {
     Behaviors.setup[Nothing] { context =>
       implicit val actorSystem: ActorSystem[Nothing]          = context.system
       implicit val executionContext: ExecutionContextExecutor = actorSystem.executionContext
+      val selector: DispatcherSelector                        = DispatcherSelector.fromConfig("futures-dispatcher")
+      val blockingEc: ExecutionContextExecutor                = actorSystem.dispatchers.lookup(selector)
 
       Kamon.init()
       AkkaManagement.get(actorSystem.classicSystem).start()
@@ -58,7 +61,7 @@ object Main extends App with Dependencies {
 
       val serverBinding: Future[Http.ServerBinding] = for {
         jwtReader <- getJwtValidator()
-        api        = attributeApi(sharding, jwtReader)
+        api        = attributeApi(sharding, jwtReader, blockingEc)
         controller = new Controller(api, healthApi, validationExceptionToRoute.some)(actorSystem.classicSystem)
         binding <- Http().newServerAt("0.0.0.0", ApplicationConfiguration.serverPort).bind(controller.routes)
       } yield binding
