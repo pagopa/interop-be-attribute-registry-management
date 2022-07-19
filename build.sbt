@@ -96,23 +96,22 @@ lazy val client = project
 lazy val root = (project in file("."))
   .settings(
     name                        := "interop-be-attribute-registry-management",
+    libraryDependencies         := Dependencies.Jars.`server`,
     Test / parallelExecution    := false,
+    Test / fork                 := true,
+    Test / javaOptions += "-Dconfig.file=src/test/resources/application-test.conf",
     scalafmtOnCompile           := true,
-    dockerBuildOptions ++= Seq("--network=host"),
-    dockerRepository            := Some(System.getenv("DOCKER_REPO")),
     dockerBaseImage             := "adoptopenjdk:11-jdk-hotspot",
     daemonUser                  := "daemon",
+    dockerBuildOptions ++= Seq("--network=host"),
+    dockerRepository            := Some(System.getenv("DOCKER_REPO")),
     Docker / version            := (ThisBuild / version).value.replaceAll("-SNAPSHOT", "-latest").toLowerCase,
     Docker / packageName        := s"${name.value}",
     Docker / dockerExposedPorts := Seq(8080),
     Docker / maintainer         := "https://pagopa.it",
-    libraryDependencies         := Dependencies.Jars.`server`,
     dockerCommands += Cmd("LABEL", s"org.opencontainers.image.source https://github.com/pagopa/${name.value}")
   )
   .aggregate(client)
   .dependsOn(generated)
   .enablePlugins(JavaAppPackaging)
   .setupBuildInfo
-
-Test / fork := true
-Test / javaOptions += "-Dconfig.file=src/test/resources/application-test.conf"
