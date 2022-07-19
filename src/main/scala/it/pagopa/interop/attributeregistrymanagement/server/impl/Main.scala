@@ -15,7 +15,6 @@ import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationCo
 import it.pagopa.interop.commons.logging.renderBuildInfo
 
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
-import kamon.Kamon
 
 import scala.concurrent.ExecutionContextExecutor
 import buildinfo.BuildInfo
@@ -26,13 +25,9 @@ import akka.actor.typed.DispatcherSelector
 
 object Main extends App with Dependencies {
 
-  Kamon.init()
-
   val logger: Logger = Logger(this.getClass())
 
-  System.setProperty("kanela.show-banner", "false")
-
-  val actorSystem: ActorSystem[Nothing] = ActorSystem[Nothing](
+  ActorSystem[Nothing](
     Behaviors.setup[Nothing] { context =>
       implicit val actorSystem: ActorSystem[Nothing]          = context.system
       implicit val executionContext: ExecutionContextExecutor = actorSystem.executionContext
@@ -81,7 +76,5 @@ object Main extends App with Dependencies {
     },
     BuildInfo.name
   )
-
-  actorSystem.whenTerminated.onComplete { case _ => Kamon.stop() }(scala.concurrent.ExecutionContext.global)
 
 }
