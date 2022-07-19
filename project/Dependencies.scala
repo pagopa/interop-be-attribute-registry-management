@@ -142,7 +142,7 @@ object Dependencies {
       pagopa.commons              % Compile,
       pagopa.commonsJWT           % Compile,
       pagopa.partyProxyClient     % Compile,
-      scalaprotobuf.core          % Protobuf,
+      scalaprotobuf.core          % "protobuf,compile",
       akka.testkit                % Test,
       akka.httpTestkit            % Test,
       "org.scalameta"            %% "munit"                % "1.0.0-M6" % Test,

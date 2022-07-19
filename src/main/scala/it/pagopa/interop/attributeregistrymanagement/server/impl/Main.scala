@@ -26,7 +26,11 @@ import akka.actor.typed.DispatcherSelector
 
 object Main extends App with Dependencies {
 
+  Kamon.init()
+
   val logger: Logger = Logger(this.getClass())
+
+  System.setProperty("kanela.show-banner", "false")
 
   val actorSystem: ActorSystem[Nothing] = ActorSystem[Nothing](
     Behaviors.setup[Nothing] { context =>
@@ -35,7 +39,6 @@ object Main extends App with Dependencies {
       val selector: DispatcherSelector                        = DispatcherSelector.fromConfig("futures-dispatcher")
       val blockingEc: ExecutionContextExecutor                = actorSystem.dispatchers.lookup(selector)
 
-      Kamon.init()
       AkkaManagement.get(actorSystem.classicSystem).start()
 
       val sharding: ClusterSharding = ClusterSharding(actorSystem)
