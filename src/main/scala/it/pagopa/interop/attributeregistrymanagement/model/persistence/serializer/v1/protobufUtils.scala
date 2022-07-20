@@ -6,21 +6,16 @@ import it.pagopa.interop.attributeregistrymanagement.model.persistence.serialize
   AttributeKindV1,
   AttributeV1
 }
+import it.pagopa.interop.commons.utils.TypeConversions._
 
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, OffsetDateTime, ZoneOffset}
-import java.util.UUID
 import scala.util.Try
 
 object protobufUtils {
 
-  private val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
-
   def toPersistentAttribute(attr: AttributeV1): Either[Throwable, PersistentAttribute] = for {
-    uuid <- Try {
-      UUID.fromString(attr.id)
-    }.toEither
-    kind <- fromProtoKind(attr.kind)
+    uuid         <- attr.id.toUUID.toEither
+    creationTime <- attr.creationTime.toOffsetDateTime.toEither
+    kind         <- fromProtoKind(attr.kind)
   } yield PersistentAttribute(
     id = uuid,
     code = attr.code,
@@ -28,18 +23,21 @@ object protobufUtils {
     description = attr.description,
     origin = attr.origin,
     name = attr.name,
-    creationTime = toTime(attr.creationTime)
+    creationTime = creationTime
   )
 
-  def toProtobufAttribute(attr: PersistentAttribute): AttributeV1 = AttributeV1(
-    id = attr.id.toString,
-    code = attr.code,
-    kind = toProtoKind(attr.kind),
-    description = attr.description,
-    origin = attr.origin,
-    name = attr.name,
-    creationTime = fromTime(attr.creationTime)
-  )
+  def toProtobufAttribute(attr: PersistentAttribute): Try[AttributeV1] =
+    attr.creationTime.asFormattedString.map(creationTime =>
+      AttributeV1(
+        id = attr.id.toString,
+        code = attr.code,
+        kind = toProtoKind(attr.kind),
+        description = attr.description,
+        origin = attr.origin,
+        name = attr.name,
+        creationTime = creationTime
+      )
+    )
 
   private def fromProtoKind(kind: AttributeKindV1): Either[Throwable, PersistentAttributeKind] = kind match {
     case CERTIFIED           => Right(Certified)
@@ -53,9 +51,5 @@ object protobufUtils {
     case Declared  => DECLARED
     case Verified  => VERIFIED
   }
-
-  def fromTime(timestamp: OffsetDateTime): String = timestamp.format(formatter)
-  def toTime(timestamp: String): OffsetDateTime   =
-    OffsetDateTime.of(LocalDateTime.parse(timestamp, formatter), ZoneOffset.UTC)
 
 }

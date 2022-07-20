@@ -27,17 +27,19 @@ package object v1 {
     } yield State(attributes)
 
   implicit def stateV1PersistEventSerializer: PersistEventSerializer[State, StateV1] = state => {
-    val entries = state.attributes.toSeq.map { case (k, v) =>
-      StateEntryV1(k, toProtobufAttribute(v))
-    }
-    Right[Throwable, StateV1](StateV1(entries))
+    state.attributes.toSeq
+      .traverse { case (k, v) =>
+        toProtobufAttribute(v).map(attribute => StateEntryV1(k, attribute))
+      }
+      .map(entries => StateV1(entries))
+      .toEither
   }
 
   implicit def attributesAddedV1PersistEventDeserializer: PersistEventDeserializer[AttributeAddedV1, AttributeAdded] =
-    event => (toPersistentAttribute(event.attribute)).map(AttributeAdded)
+    event => toPersistentAttribute(event.attribute).map(AttributeAdded)
 
   implicit def attributesAddedV1PersistEventSerializer: PersistEventSerializer[AttributeAdded, AttributeAddedV1] =
-    event => Right[Throwable, AttributeAddedV1](AttributeAddedV1(toProtobufAttribute(event.attribute)))
+    event => toProtobufAttribute(event.attribute).map(AttributeAddedV1.of).toEither
 
   implicit def attributesDeletedV1PersistEventDeserializer
     : PersistEventDeserializer[AttributeDeletedV1, AttributeDeleted] =
