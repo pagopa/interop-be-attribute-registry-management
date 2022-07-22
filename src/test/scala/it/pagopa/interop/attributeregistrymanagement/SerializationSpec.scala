@@ -43,7 +43,7 @@ class PersistentSerializationSpec extends ScalaCheckSuite with DiffxAssertions {
   def deserCheck[A, B: TypeTag](
     gen: Gen[(A, B)]
   )(implicit e: PersistEventDeserializer[B, A], loc: munit.Location, d: => Diff[Either[Throwable, A]]): Unit =
-    property(s"${typeOf[B].typeSymbol.name.toString} is correctly serialized") {
+    property(s"${typeOf[B].typeSymbol.name.toString} is correctly deserialized") {
       forAll(gen) { case (state, stateV1) =>
         // * This is declared lazy in the signature to avoid a MethodTooBigException
         implicit val diffX: Diff[Either[Throwable, A]] = d
