@@ -138,7 +138,8 @@ object Dependencies {
       akka.testkit                % Test,
       akka.httpTestkit            % Test,
       "org.scalameta"            %% "munit"                % "1.0.0-M6" % Test,
-      "org.scalameta"            %% "munit-scalacheck"     % "1.0.0-M6" % Test
+      "org.scalameta"            %% "munit-scalacheck"     % "1.0.0-M6" % Test,
+      "com.softwaremill.diffx"   %% "diffx-munit"          % "0.7.0"    % Test
     )
     lazy val client: Seq[ModuleID]    =
       Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.commons).map(

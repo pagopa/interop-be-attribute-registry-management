@@ -3,76 +3,53 @@ package it.pagopa.interop.attributeregistrymanagement
 import cats.implicits._
 import org.scalacheck.Prop.forAll
 import org.scalacheck.Gen
-// import cats.kernel.Eq
 import munit.ScalaCheckSuite
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.attribute.AttributeKindV1
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.attribute.AttributeV1
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.State
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.state.StateV1
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.state.StateEntryV1
 import PersistentSerializationSpec._
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.{
-  PersistEventSerializer,
-  PersistEventDeserializer
-}
-import munit.Compare
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributeAdded
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.events.AttributeAddedV1
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributeDeleted
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.events.AttributeDeletedV1
+import com.softwaremill.diffx.Diff
+import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.munit.DiffxAssertions
+import scala.reflect.runtime.universe.{typeOf, TypeTag}
+import it.pagopa.interop.attributeregistrymanagement.model.persistence._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.state._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.events._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.serializer.v1.attribute._
 
-class PersistentSerializationSpec extends ScalaCheckSuite {
+class PersistentSerializationSpec extends ScalaCheckSuite with DiffxAssertions {
 
-  property("State is correctly deserialized") {
-    forAll(stateGen) { case (state, stateV1) =>
-      assertEquals(PersistEventDeserializer.from[StateV1, State](stateV1), Either.right[Throwable, State](state))
+  serdeCheck[State, StateV1](stateGen, _.sorted)
+  serdeCheck[AttributeAdded, AttributeAddedV1](attributeAddedGen)
+  serdeCheck[AttributeDeleted, AttributeDeletedV1](attributeDeletedGen)
+  deserCheck[State, StateV1](stateGen)
+  deserCheck[AttributeAdded, AttributeAddedV1](attributeAddedGen)
+  deserCheck[AttributeDeleted, AttributeDeletedV1](attributeDeletedGen)
+
+  // TODO move me in commons
+  def serdeCheck[A: TypeTag, B](gen: Gen[(A, B)], adapter: B => B = identity[B](_))(implicit
+    e: PersistEventSerializer[A, B],
+    loc: munit.Location,
+    d: => Diff[Either[Throwable, B]]
+  ): Unit = property(s"${typeOf[A].typeSymbol.name.toString} is correctly serialized") {
+    forAll(gen) { case (state, stateV1) =>
+      implicit val diffX: Diff[Either[Throwable, B]] = d
+      assertEqual(PersistEventSerializer.to[A, B](state).map(adapter), Right(stateV1).map(adapter))
     }
   }
 
-  property("State is correctly serialized") {
-    forAll(stateGen) { case (state, stateV1) =>
-      assertEquals(PersistEventSerializer.to[State, StateV1](state), Either.right[Throwable, StateV1](stateV1))
+  // TODO move me in commons
+  def deserCheck[A, B: TypeTag](
+    gen: Gen[(A, B)]
+  )(implicit e: PersistEventDeserializer[B, A], loc: munit.Location, d: => Diff[Either[Throwable, A]]): Unit =
+    property(s"${typeOf[B].typeSymbol.name.toString} is correctly serialized") {
+      forAll(gen) { case (state, stateV1) =>
+        // * This is declared lazy in the signature to avoid a MethodTooBigException
+        implicit val diffX: Diff[Either[Throwable, A]] = d
+        assertEqual(PersistEventDeserializer.from[B, A](stateV1), Right(state))
+      }
     }
-  }
-
-  property("AttributeAdded is correctly deserialized") {
-    forAll(attributeAddedGen) { case (attributeAdded, attributeAddedV1) =>
-      assertEquals(
-        PersistEventDeserializer.from[AttributeAddedV1, AttributeAdded](attributeAddedV1),
-        Either.right[Throwable, AttributeAdded](attributeAdded)
-      )
-    }
-  }
-
-  property("AttributeAdded is correctly serialized") {
-    forAll(attributeAddedGen) { case (attributeAdded, attributeAddedV1) =>
-      assertEquals(
-        PersistEventSerializer.to[AttributeAdded, AttributeAddedV1](attributeAdded),
-        Either.right[Throwable, AttributeAddedV1](attributeAddedV1)
-      )
-    }
-  }
-
-  property("AttributeDeleted is correctly deserialized") {
-    forAll(attributeDeletedGen) { case (attributeDeleted, attributeDeletedV1) =>
-      assertEquals(
-        PersistEventDeserializer.from[AttributeDeletedV1, AttributeDeleted](attributeDeletedV1),
-        Either.right[Throwable, AttributeDeleted](attributeDeleted)
-      )
-    }
-  }
-
-  property("AttributeDeleted is correctly serialized") {
-    forAll(attributeDeletedGen) { case (attributeDeleted, attributeDeletedV1) =>
-      assertEquals(
-        PersistEventSerializer.to[AttributeDeleted, AttributeDeletedV1](attributeDeleted),
-        Either.right[Throwable, AttributeDeletedV1](attributeDeletedV1)
-      )
-    }
-  }
 
 }
 
@@ -137,20 +114,8 @@ object PersistentSerializationSpec {
   val attributeDeletedGen: Gen[(AttributeDeleted, AttributeDeletedV1)] =
     Gen.alphaNumStr.map(str => (AttributeDeleted(str), AttributeDeletedV1(str)))
 
-  implicit val compareState: Compare[State, State] = (stateA, stateB) => {
-    stateA == stateB
-  }
-
-  implicit val compareStateV1: Compare[StateV1, StateV1] = (stateA, stateB) => {
-    stateA.attributes.sortBy(_.key) == stateB.attributes.sortBy(_.key)
-  }
-
-  implicit def compareStateEither[A, B](implicit
-    compare: Compare[A, B]
-  ): Compare[Either[Throwable, A], Either[Throwable, B]] = {
-    case (Right(a), Right(b)) => compare.isEqual(a, b)
-    case (Left(a), Left(b))   => a == b
-    case _                    => false
+  implicit class PimpedStateV1(val stateV1: StateV1) extends AnyVal {
+    def sorted: StateV1 = stateV1.copy(stateV1.attributes.sortBy(_.key))
   }
 
 }
