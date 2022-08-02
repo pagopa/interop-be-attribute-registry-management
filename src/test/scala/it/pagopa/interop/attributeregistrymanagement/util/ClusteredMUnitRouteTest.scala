@@ -14,6 +14,7 @@ import munit.FunSuite
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
+import munit.Location
 
 trait MUnitRouteTest extends RouteTest with MUnitTestFrameworkInterface { this: munit.FunSuite => }
 
@@ -44,7 +45,7 @@ trait ClusteredMUnitRouteTest extends MUnitRouteTest {
     super.afterAll()
   }
 
-  def validateAuthorization(endpoint: Endpoint, r: Seq[(String, String)] => Route): Unit = {
+  def validateAuthorization(endpoint: Endpoint, r: Seq[(String, String)] => Route)(implicit loc: Location): Unit = {
     endpoint.rolesInContexts.foreach(contexts => {
       validRoleCheck(contexts.toMap.get(USER_ROLES).toString, endpoint.asRequest, r(contexts))
     })
@@ -56,14 +57,14 @@ trait ClusteredMUnitRouteTest extends MUnitRouteTest {
   }
 
   // when request occurs, check that it does not return neither 401 nor 403
-  private def validRoleCheck(role: String, request: => HttpRequest, r: => Route) =
+  private def validRoleCheck(role: String, request: => HttpRequest, r: => Route)(implicit loc: Location) =
     request ~> r ~> check {
       assertNotEquals(status, StatusCodes.Unauthorized, s"role $role should not be unauthorized")
       assertNotEquals(status, StatusCodes.Forbidden, s"role $role should not be forbidden")
     }
 
   // when request occurs, check that it forbids invalid role
-  private def invalidRoleCheck(role: String, request: => HttpRequest, r: => Route) = {
+  private def invalidRoleCheck(role: String, request: => HttpRequest, r: => Route)(implicit loc: Location) = {
     request ~> r ~> check {
       assertEquals(status, StatusCodes.Forbidden, s"role $role should be forbidden")
     }

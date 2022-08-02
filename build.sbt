@@ -72,12 +72,25 @@ cleanFiles += baseDirectory.value / "client" / "target"
 
 ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / ".credentials")
 
-lazy val generated = project
+val generated: Project = project
   .in(file("generated"))
   .settings(scalacOptions := Seq(), scalafmtOnCompile := true, libraryDependencies := Dependencies.Jars.`server`)
   .setupBuildInfo
 
-lazy val client = project
+val models: Project = project
+  .in(file("models"))
+  .settings(
+    name              := "interop-be-attribute-registry-management-models",
+    scalafmtOnCompile := true,
+    Docker / publish  := {},
+    publishTo         := {
+      val nexus = s"https://${System.getenv("MAVEN_REPO")}/nexus/repository/"
+      if (isSnapshot.value) Some("snapshots" at nexus + "maven-snapshots/")
+      else Some("releases" at nexus + "maven-releases/")
+    }
+  )
+
+val client: Project = project
   .in(file("client"))
   .settings(
     name                := "interop-be-attribute-registry-management-client",
@@ -93,7 +106,7 @@ lazy val client = project
     }
   )
 
-lazy val root = (project in file("."))
+val root: Project = (project in file("."))
   .settings(
     name                        := "interop-be-attribute-registry-management",
     libraryDependencies         := Dependencies.Jars.`server`,
@@ -111,7 +124,7 @@ lazy val root = (project in file("."))
     Docker / maintainer         := "https://pagopa.it",
     dockerCommands += Cmd("LABEL", s"org.opencontainers.image.source https://github.com/pagopa/${name.value}")
   )
-  .aggregate(client)
-  .dependsOn(generated)
+  .aggregate(client, models)
+  .dependsOn(generated, models)
   .enablePlugins(JavaAppPackaging)
   .setupBuildInfo
