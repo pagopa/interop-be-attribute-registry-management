@@ -1,6 +1,5 @@
 package it.pagopa.interop.attributeregistrymanagement.util
 
-import akka.actor
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
@@ -12,38 +11,34 @@ import it.pagopa.interop.attributeregistrymanagement.model.persistence.Command
 import it.pagopa.interop.commons.utils.USER_ROLES
 import munit.FunSuite
 
-import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import munit.Location
 
-trait MUnitRouteTest extends RouteTest with MUnitTestFrameworkInterface { this: munit.FunSuite => }
+import akka.http.scaladsl.testkit.TestFrameworkInterface
+import akka.http.scaladsl.server.ExceptionHandler
+import it.pagopa.interop.attributeregistrymanagement.AkkaTestConfiguration
 
-trait ClusteredMUnitRouteTest extends MUnitRouteTest {
-  suite: FunSuite =>
-  // the Akka HTTP route testkit does not yet support a typed actor system (https://github.com/akka/akka-http/issues/2036)
-  // so we have to adapt for now
-  lazy val testKit                                         = ActorTestKit()
-  implicit def testTypedSystem                             = testKit.system
-  override def createActorSystem(): akka.actor.ActorSystem =
-    testKit.system.classicSystem
-
-  val testAkkaSharding: ClusterSharding = ClusterSharding(testTypedSystem)
-
-  implicit val executionContext: ExecutionContextExecutor = testTypedSystem.executionContext
-  val classicSystem: actor.ActorSystem                    = testTypedSystem.classicSystem
+trait ClusteredMUnitRouteTest extends FunSuite with RouteTest with TestFrameworkInterface {
 
   val testPersistentEntity: Entity[Command, ShardingEnvelope[Command]]
 
-  Cluster(testTypedSystem).manager ! Join(Cluster(testTypedSystem).selfMember.address)
+  override def afterAll() = {
+    ActorTestKit.shutdown(testTypedSystem, 10.seconds)
+    cleanUp()
+  }
 
   override def beforeAll(): Unit = {
     val _ = testAkkaSharding.init(testPersistentEntity)
   }
 
-  override def afterAll(): Unit = {
-    ActorTestKit.shutdown(testTypedSystem, 10.seconds)
-    super.afterAll()
-  }
+  override def failTest(msg: String): Nothing = fail(msg)
+  def testExceptionHandler: ExceptionHandler  = ExceptionHandler { case e => throw e }
+
+  lazy val testKit             = ActorTestKit(AkkaTestConfiguration.config)
+  implicit def testTypedSystem = testKit.system
+
+  val testAkkaSharding: ClusterSharding = ClusterSharding(testTypedSystem)
+  Cluster(testTypedSystem).manager ! Join(Cluster(testTypedSystem).selfMember.address)
 
   def validateAuthorization(endpoint: Endpoint, r: Seq[(String, String)] => Route)(implicit loc: Location): Unit = {
     endpoint.rolesInContexts.foreach(contexts => {

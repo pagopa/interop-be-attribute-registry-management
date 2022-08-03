@@ -14,5 +14,3 @@ final case class PersistentAttribute(
   name: String,
   creationTime: OffsetDateTime
 ) extends Persistent
-
-object PersistentAttribute
