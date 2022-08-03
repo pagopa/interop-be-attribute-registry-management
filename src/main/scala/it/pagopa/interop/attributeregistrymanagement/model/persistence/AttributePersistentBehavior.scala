@@ -7,7 +7,8 @@ import akka.pattern.StatusReply
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, RetentionCriteria}
 import it.pagopa.interop.attributeregistrymanagement.model.Attribute
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute.toAPI
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.AttributeAdapters._
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.{DurationInt, DurationLong}
@@ -28,7 +29,7 @@ object AttributePersistentBehavior {
       case CreateAttribute(attribute, replyTo) =>
         Effect
           .persist(AttributeAdded(attribute))
-          .thenRun((_: State) => replyTo ! toAPI(attribute))
+          .thenRun((_: State) => replyTo ! PersistentAttribute.toAPI(attribute))
 
       case DeleteAttribute(attributeId, replyTo) =>
         state
@@ -45,12 +46,14 @@ object AttributePersistentBehavior {
       case GetAttribute(attributeId, replyTo) =>
         val reply = state
           .getAttribute(attributeId)
-          .fold(StatusReply.Error[Attribute](AttributeNotFoundException))(a => StatusReply.Success(toAPI(a)))
+          .fold(StatusReply.Error[Attribute](AttributeNotFoundException))(a =>
+            StatusReply.Success(PersistentAttribute.toAPI(a))
+          )
         replyTo ! reply
         Effect.none[Event, State]
 
       case GetAttributes(from, to, replyTo) =>
-        val reply = state.getAttributes.slice(from, to).map(toAPI)
+        val reply = state.getAttributes.slice(from, to).map(PersistentAttribute.toAPI)
         replyTo ! reply
         Effect.none[Event, State]
 
