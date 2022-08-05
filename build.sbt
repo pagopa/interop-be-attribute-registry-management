@@ -73,6 +73,8 @@ cleanFiles += baseDirectory.value / "client" / "target"
 ThisBuild / credentials += Credentials(Path.userHome / ".sbt" / ".credentials")
 
 val generated: Project = project
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings: _*)
   .in(file("generated"))
   .settings(scalacOptions := Seq(), scalafmtOnCompile := true, libraryDependencies := Dependencies.Jars.`server`)
   .setupBuildInfo
@@ -80,10 +82,11 @@ val generated: Project = project
 val models: Project = project
   .in(file("models"))
   .settings(
-    name              := "interop-be-attribute-registry-management-models",
-    scalafmtOnCompile := true,
-    Docker / publish  := {},
-    publishTo         := {
+    name                := "interop-be-attribute-registry-management-models",
+    libraryDependencies := Dependencies.Jars.models,
+    scalafmtOnCompile   := true,
+    Docker / publish    := {},
+    publishTo           := {
       val nexus = s"https://${System.getenv("MAVEN_REPO")}/nexus/repository/"
       if (isSnapshot.value) Some("snapshots" at nexus + "maven-snapshots/")
       else Some("releases" at nexus + "maven-releases/")
@@ -107,12 +110,16 @@ val client: Project = project
   )
 
 val root: Project = (project in file("."))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings: _*)
   .settings(
     name                        := "interop-be-attribute-registry-management",
     libraryDependencies         := Dependencies.Jars.`server`,
     Test / parallelExecution    := false,
     Test / fork                 := true,
     Test / javaOptions += "-Dconfig.file=src/test/resources/application-test.conf",
+    IntegrationTest / fork      := true,
+    IntegrationTest / javaOptions += "-Dconfig.file=src/it/resources/application-it.conf",
     scalafmtOnCompile           := true,
     dockerBaseImage             := "adoptopenjdk:11-jdk-hotspot",
     daemonUser                  := "daemon",
