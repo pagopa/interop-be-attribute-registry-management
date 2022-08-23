@@ -77,8 +77,9 @@ object Dependencies {
     lazy val partyProxyClient =
       namespace %% "interop-be-party-registry-proxy-client" % partyProxyVersion
 
-    lazy val commons    = namespace %% "interop-commons-utils" % commonsVersion
-    lazy val commonsJWT = namespace %% "interop-commons-jwt"   % commonsVersion
+    lazy val commonsUtils = namespace %% "interop-commons-utils" % commonsVersion
+    lazy val commonsJWT   = namespace %% "interop-commons-jwt"   % commonsVersion
+    lazy val commonsCqrs  = namespace %% "interop-commons-cqrs"  % commonsVersion
 
   }
 
@@ -102,7 +103,7 @@ object Dependencies {
       Seq(jackson.annotations % Compile, jackson.core % Compile, jackson.databind % Compile)
     lazy val `server`: Seq[ModuleID]  = Seq(
       // For making Java 12 happy
-      "javax.annotation"          % "javax.annotation-api" % "1.3.2"    % "compile",
+      "javax.annotation"          % "javax.annotation-api"           % "1.3.2"                    % "compile",
       //
       akka.actorTyped             % Compile,
       akka.clusterTyped           % Compile,
@@ -130,20 +131,25 @@ object Dependencies {
       cats.core                   % Compile,
       logback.classic             % Compile,
       mustache.mustache           % Compile,
-      postgres.jdbc               % Compile,
-      pagopa.commons              % Compile,
+      postgres.jdbc               % "compile,it",
+      pagopa.commonsUtils         % "compile,it",
       pagopa.commonsJWT           % Compile,
+      pagopa.commonsCqrs          % "compile,it",
       pagopa.partyProxyClient     % Compile,
       scalaprotobuf.core          % "protobuf,compile",
-      akka.testkit                % Test,
-      akka.httpTestkit            % Test,
-      "org.scalameta"            %% "munit"                % "1.0.0-M6" % Test,
-      "org.scalameta"            %% "munit-scalacheck"     % "1.0.0-M6" % Test,
-      "com.softwaremill.diffx"   %% "diffx-munit"          % "0.7.0"    % Test
+      akka.testkit                % "test,it",
+      akka.httpTestkit            % "test,it",
+      scalamock.core              % IntegrationTest,
+      scalatest.core              % IntegrationTest,
+      "org.scalameta"            %% "munit"                          % "1.0.0-M6"                 % Test,
+      "org.scalameta"            %% "munit-scalacheck"               % "1.0.0-M6"                 % Test,
+      "com.softwaremill.diffx"   %% "diffx-munit"                    % "0.7.0"                    % Test,
+      "com.dimafeng"             %% "testcontainers-scala-scalatest" % testcontainersScalaVersion % IntegrationTest
     )
     lazy val client: Seq[ModuleID]    =
-      Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.commons).map(
+      Seq(akka.stream, akka.http, akka.httpJson4s, akka.slf4j, json4s.jackson, json4s.ext, pagopa.commonsUtils).map(
         _ % Compile
       )
+    lazy val models: List[ModuleID]   = List(pagopa.commonsUtils).map(_ % Compile)
   }
 }

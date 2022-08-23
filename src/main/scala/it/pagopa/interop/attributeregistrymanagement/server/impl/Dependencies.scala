@@ -19,11 +19,8 @@ import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationCo
   projectionTag
 }
 import it.pagopa.interop.attributeregistrymanagement.model.Problem
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.{
-  AttributePersistentBehavior,
-  AttributePersistentProjection,
-  Command
-}
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.projection.AttributesCqrsProjection
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
 import it.pagopa.interop.attributeregistrymanagement.service.impl.PartyRegistryServiceImpl
 import it.pagopa.interop.attributeregistrymanagement.service.{PartyProxyInvoker, PartyRegistryService}
 import it.pagopa.interop.commons.jwt.service.JWTReader
@@ -32,14 +29,13 @@ import it.pagopa.interop.commons.jwt.{JWTConfiguration, KID, PublicKeysHolder, S
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions._
-import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
+import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.interop.partyregistryproxy.client.api.CategoryApi
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 trait Dependencies {
 
@@ -58,17 +54,19 @@ trait Dependencies {
   val attributePersistentEntity: Entity[Command, ShardingEnvelope[Command]] =
     Entity(AttributePersistentBehavior.TypeKey)(behaviorFactory)
 
-  def initProjections()(implicit actorSystem: ActorSystem[_]): Unit = {
+  def initProjections()(implicit actorSystem: ActorSystem[_], ec: ExecutionContext): Unit = {
     val dbConfig: DatabaseConfig[JdbcProfile] =
       DatabaseConfig.forConfig("akka-persistence-jdbc.shared-databases.slick")
 
-    val attributePersistentProjection =
-      AttributePersistentProjection(actorSystem, attributePersistentEntity, dbConfig)
+    val mongoDbConfig = ApplicationConfiguration.mongoDb
+
+    val projectionId   = "attributes-cqrs-projections"
+    val cqrsProjection = AttributesCqrsProjection.projection(dbConfig, mongoDbConfig, projectionId)
 
     ShardedDaemonProcess(actorSystem).init[ProjectionBehavior.Command](
-      name = "attribute-projections",
+      name = projectionId,
       numberOfInstances = numberOfProjectionTags,
-      behaviorFactory = (i: Int) => ProjectionBehavior(attributePersistentProjection.projection(projectionTag(i))),
+      behaviorFactory = (i: Int) => ProjectionBehavior(cqrsProjection.projection(projectionTag(i))),
       stopMessage = ProjectionBehavior.Stop
     )
   }
