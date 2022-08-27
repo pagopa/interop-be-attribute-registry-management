@@ -14,8 +14,8 @@ import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
 import it.pagopa.interop.attributeregistrymanagement.model._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributePersistentBehavior.AttributeNotFoundException
 import it.pagopa.interop.attributeregistrymanagement.model.persistence._
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute.{fromSeed, toAPI}
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.AttributeAdapters._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.validation.Validation
 import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
@@ -71,7 +71,7 @@ class AttributeApiServiceImpl(
 
     val result: Future[Attribute] = attributeByCommand(GetAttributeByName(attributeSeed.name, _)).flatMap {
       case None       =>
-        val persistentAttribute           = fromSeed(attributeSeed, uuidSupplier, timeSupplier)
+        val persistentAttribute           = PersistentAttribute.fromSeed(attributeSeed, uuidSupplier, timeSupplier)
         val shard                         = getShard(persistentAttribute.id.toString)
         val commander: EntityRef[Command] = sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard)
         commander.ask(CreateAttribute(persistentAttribute, _))
@@ -115,7 +115,7 @@ class AttributeApiServiceImpl(
     logger.info("Retrieving attribute named {}", name)
 
     onComplete(attributeByCommand(GetAttributeByName(name, _))) {
-      case Success(Some(attribute)) => getAttributeByName200(toAPI(attribute))
+      case Success(Some(attribute)) => getAttributeByName200(PersistentAttribute.toAPI(attribute))
       case Success(None)            =>
         logger.error(s"Error while retrieving attribute named $name - Attribute not found")
         getAttributeByName404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
@@ -227,7 +227,7 @@ class AttributeApiServiceImpl(
       )
 
     def createAttribute(seed: AttributeSeed): Future[Attribute] = {
-      val persistentAttribute: PersistentAttribute = fromSeed(seed, uuidSupplier, timeSupplier)
+      val persistentAttribute: PersistentAttribute = PersistentAttribute.fromSeed(seed, uuidSupplier, timeSupplier)
       val commander: EntityRef[Command]            =
         sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
       commander.ask(ref => CreateAttribute(persistentAttribute, ref))
@@ -280,7 +280,7 @@ class AttributeApiServiceImpl(
   ): Route = authorize(ADMIN_ROLE) {
     logger.info(s"Retrieving attribute having origin $origin and code $code")
     onComplete(attributeByCommand(GetAttributeByInfo(AttributeInfo(origin, code), _))) {
-      case Success(Some(attribute)) => getAttributeByOriginAndCode200(toAPI(attribute))
+      case Success(Some(attribute)) => getAttributeByOriginAndCode200(PersistentAttribute.toAPI(attribute))
       case Success(None)            =>
         logger.error(s"Error while retrieving attribute having origin $origin and code $code - not found")
         getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
