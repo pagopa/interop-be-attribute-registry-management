@@ -1,7 +1,7 @@
 package it.pagopa.interop.attributeregistrymanagement.api
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import it.pagopa.interop.commons.utils.SprayCommonFormats.offsetDateTimeFormat
+import it.pagopa.interop.commons.utils.SprayCommonFormats._
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, AttributesResponse, Problem}
 import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 
