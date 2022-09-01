@@ -322,6 +322,7 @@ components:
         id:
           type: string
           description: uniquely identifies the attribute on the registry
+          format: uuid
         code:
           type: string
           description: identifies the unique code of this attribute on the origin registry

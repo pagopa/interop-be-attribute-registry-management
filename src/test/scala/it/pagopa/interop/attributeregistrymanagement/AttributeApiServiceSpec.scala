@@ -101,7 +101,7 @@ class AttributeApiServiceSpec extends AkkaTestSuite {
     implicit val ec: ExecutionContext     = as.executionContext
 
     val expected = Attribute(
-      id = UUID.randomUUID().toString,
+      id = UUID.randomUUID(),
       code = Some("YADA"),
       kind = CERTIFIED,
       description = "Proxied",

@@ -9,7 +9,7 @@ object AttributeAdapters {
 
   implicit class PersistentAttributeObjectWrapper(private val p: PersistentAttribute.type) extends AnyVal {
     def toAPI(persistentAttribute: PersistentAttribute): Attribute = Attribute(
-      id = persistentAttribute.id.toString,
+      id = persistentAttribute.id,
       code = persistentAttribute.code,
       description = persistentAttribute.description,
       kind = persistentAttribute.kind.toApi,

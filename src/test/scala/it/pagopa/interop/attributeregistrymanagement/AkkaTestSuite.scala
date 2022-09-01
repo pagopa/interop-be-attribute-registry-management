@@ -153,9 +153,9 @@ trait AkkaTestSuite extends ScalaCheckSuite {
     } yield (response.status, body.attributes.toList)
   }
 
-  def deleteAttribute(attributeId: String)(implicit actorSystem: ActorSystem[_]): Future[StatusCode] = {
+  def deleteAttribute(attributeId: UUID)(implicit actorSystem: ActorSystem[_]): Future[StatusCode] = {
     implicit val ec: ExecutionContext = actorSystem.executionContext
-    execute(s"attributes/$attributeId", DELETE).map(_.status)
+    execute(s"attributes/${attributeId.toString}", DELETE).map(_.status)
   }
 
   def loadAttributes(implicit actorSystem: ActorSystem[_]): Future[StatusCode] = {
@@ -210,7 +210,7 @@ trait AkkaTestSuite extends ScalaCheckSuite {
   private val originGenerator: Gen[Option[String]] = Gen.stringOfN(3, Gen.alphaUpperChar).map(Option(_))
 
   val attribute: Gen[Attribute] = for {
-    uuid        <- Gen.uuid.map(_.toString())
+    uuid        <- Gen.uuid
     code        <- Gen.chooseNum(100, 50000).map(_.toString).map(Option(_))
     kind        <- Gen.oneOf(CERTIFIED, DECLARED, VERIFIED)
     description <- descriptionGenerator
@@ -227,7 +227,7 @@ trait AkkaTestSuite extends ScalaCheckSuite {
   } yield AttributeSeed(code, kind, description, origin, name)
 
   val attributeAndSeed: Gen[(Attribute, AttributeSeed)] = for {
-    uuid        <- Gen.uuid.map(_.toString())
+    uuid        <- Gen.uuid
     code        <- Gen.chooseNum(100, 50000).map(_.toString).map(Option(_))
     kind        <- Gen.oneOf(CERTIFIED, DECLARED, VERIFIED)
     description <- descriptionGenerator
