@@ -15,5 +15,5 @@ object errors {
       extends ComponentError("0004", s"Attribute not found for $origin/$attrCode")
 
   final case class ValidationException(field: String, validationError: String)
-      extends ComponentError("005", s"Validation controls on $field do not pass - $validationError")
+      extends ComponentError("0005", s"Validation controls on $field do not pass - $validationError")
 }
