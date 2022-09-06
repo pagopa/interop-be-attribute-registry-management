@@ -13,7 +13,7 @@ final object AttributeApiMarshallerImpl extends AttributeApiMarshaller with Spra
 
   override implicit def toEntityMarshallerAttribute: ToEntityMarshaller[Attribute] = sprayJsonMarshaller[Attribute]
 
-  override implicit def toEntityMarshallerProblem: ToEntityMarshaller[Problem] = sprayJsonMarshaller[Problem]
+  override implicit def toEntityMarshallerProblem: ToEntityMarshaller[Problem] = entityMarshallerProblem
 
   override implicit def toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse] =
     sprayJsonMarshaller[AttributesResponse]

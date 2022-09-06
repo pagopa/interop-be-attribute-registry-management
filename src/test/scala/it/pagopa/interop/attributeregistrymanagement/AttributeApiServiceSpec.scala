@@ -53,9 +53,9 @@ class AttributeApiServiceSpec extends AkkaTestSuite {
         delStatus         <- deleteAttribute(created.id)
       } yield (status, problem, delStatus)
 
-      val (status, problem, delStatus) = await(result)
+      val (status, problem: Problem, delStatus) = await(result)
       assertEquals(status, Conflict)
-      assertEquals(problem.detail.get, s"An attribute with name = '${attribute.name}' already exists on the registry")
+      assertEquals(problem.errors.head.detail, s"Attribute ${attribute.name} already exists")
       assertEquals(delStatus, NoContent)
     }
   }

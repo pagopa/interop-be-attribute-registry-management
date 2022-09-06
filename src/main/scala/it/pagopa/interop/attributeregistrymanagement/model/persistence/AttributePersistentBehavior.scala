@@ -6,6 +6,7 @@ import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, EntityTypeKey}
 import akka.pattern.StatusReply
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, RetentionCriteria}
+import it.pagopa.interop.attributeregistrymanagement.common.system.errors.AttributeNotFound
 import it.pagopa.interop.attributeregistrymanagement.model.Attribute
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.AttributeAdapters._
@@ -15,8 +16,6 @@ import scala.concurrent.duration.{DurationInt, DurationLong}
 import scala.language.postfixOps
 
 object AttributePersistentBehavior {
-
-  final case object AttributeNotFoundException extends Throwable
 
   def commandHandler(
     shard: ActorRef[ClusterSharding.ShardCommand],
@@ -35,7 +34,7 @@ object AttributePersistentBehavior {
         state
           .getAttribute(attributeId)
           .fold {
-            replyTo ! StatusReply.Error[Unit](AttributeNotFoundException)
+            replyTo ! StatusReply.Error[Unit](AttributeNotFound(attributeId))
             Effect.none[AttributeDeleted, State]
           } { _ =>
             Effect
@@ -46,7 +45,7 @@ object AttributePersistentBehavior {
       case GetAttribute(attributeId, replyTo) =>
         val reply = state
           .getAttribute(attributeId)
-          .fold(StatusReply.Error[Attribute](AttributeNotFoundException))(a =>
+          .fold(StatusReply.Error[Attribute](AttributeNotFound(attributeId)))(a =>
             StatusReply.Success(PersistentAttribute.toAPI(a))
           )
         replyTo ! reply

@@ -3,6 +3,7 @@ package it.pagopa.interop.attributeregistrymanagement.server.impl
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityContext, ShardedDaemonProcess}
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.complete
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.SecurityDirectives
@@ -18,7 +19,6 @@ import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationCo
   numberOfProjectionTags,
   projectionTag
 }
-import it.pagopa.interop.attributeregistrymanagement.model.Problem
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.projection.AttributesCqrsProjection
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
 import it.pagopa.interop.attributeregistrymanagement.service.impl.PartyRegistryServiceImpl
@@ -113,8 +113,8 @@ trait Dependencies {
   )
 
   val validationExceptionToRoute: ValidationReport => Route = report => {
-    val message = OpenapiUtils.errorFromRequestValidationReport(report)
-    complete(400, Problem(Some(message), 400, "bad request"))(AttributeApiMarshallerImpl.toEntityMarshallerProblem)
+    val error = problemOf(StatusCodes.BadRequest, OpenapiUtils.errorFromRequestValidationReport(report))
+    complete(error.status, error)(entityMarshallerProblem)
   }
 
 }
