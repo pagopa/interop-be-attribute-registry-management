@@ -4,14 +4,12 @@ import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeKind}
 
-import java.util.UUID
-
 object PersistentAdapters {
 
   implicit class AttributeWrapper(private val a: Attribute) extends AnyVal {
     def toPersistent: PersistentAttribute =
       PersistentAttribute(
-        id = UUID.fromString(a.id),
+        id = a.id,
         code = a.code,
         origin = a.origin,
         kind = a.kind.toPersistent,

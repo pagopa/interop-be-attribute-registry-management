@@ -1,36 +1,34 @@
 package it.pagopa.interop.attributeregistrymanagement.api.impl
 
-import cats.implicits._
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
 import akka.http.scaladsl.marshalling.ToEntityMarshaller
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives.{complete, onComplete, onSuccess}
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Route, StandardRoute}
 import akka.pattern.StatusReply
+import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
+import cats.implicits._
+import com.typesafe.scalalogging.Logger
 import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
+import it.pagopa.interop.attributeregistrymanagement.common.system.errors._
 import it.pagopa.interop.attributeregistrymanagement.model._
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.AttributePersistentBehavior.AttributeNotFoundException
 import it.pagopa.interop.attributeregistrymanagement.model.persistence._
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.AttributeAdapters._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.validation.Validation
 import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
+import it.pagopa.interop.commons.jwt._
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.AkkaUtils.getFutureBearer
+import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.{GenericError, OperationForbidden}
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
-import it.pagopa.interop.attributeregistrymanagement.common.system.errors._
-import com.typesafe.scalalogging.Logger
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
-import akka.util.Timeout
-import it.pagopa.interop.commons.jwt.{ADMIN_ROLE, API_ROLE, INTERNAL_ROLE, M2M_ROLE, authorizeInterop, hasPermissions}
-import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.OperationForbidden
 
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 class AttributeApiServiceImpl(
   uuidSupplier: UUIDSupplier,
@@ -57,10 +55,7 @@ class AttributeApiServiceImpl(
   private[this] def authorize(roles: String*)(
     route: => Route
   )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route =
-    authorizeInterop(
-      hasPermissions(roles: _*),
-      Problem(Option(OperationForbidden.getMessage), status = 403, "Operation forbidden")
-    )(route)
+    authorizeInterop(hasPermissions(roles: _*), problemOf(StatusCodes.Forbidden, OperationForbidden))(route)
 
   override def createAttribute(attributeSeed: AttributeSeed)(implicit
     contexts: Seq[(String, String)],
@@ -75,18 +70,18 @@ class AttributeApiServiceImpl(
         val shard                         = getShard(persistentAttribute.id.toString)
         val commander: EntityRef[Command] = sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard)
         commander.ask(CreateAttribute(persistentAttribute, _))
-      case Some(attr) => Future.failed(AttributeAlreadyPresentException(attr.name))
+      case Some(attr) => Future.failed(AttributeAlreadyPresent(attr.name))
     }
 
     onComplete(result) {
-      case Success(attribute)                              => createAttribute201(attribute)
-      case Failure(AttributeAlreadyPresentException(name)) =>
-        val error: String = s"An attribute with name = '${name}' already exists on the registry"
-        logger.error(s"Error while creating attribute ${name} - $error")
-        createAttribute409(Problem(Option(error), status = 400, "Validation error"))
-      case Failure(e)                                      =>
-        logger.error(s"Error while creating attribute ${attributeSeed.name}", e)
-        createAttribute400(Problem(Option(e.getMessage), status = 400, "Persistence error"))
+      case Success(attribute)                   => createAttribute201(attribute)
+      case Failure(ex: AttributeAlreadyPresent) =>
+        val error: String = s"An attribute with name = '${ex.name}' already exists on the registry"
+        logger.error(s"Error while creating attribute ${ex.name} - $error")
+        createAttribute409(problemOf(StatusCodes.Conflict, ex))
+      case Failure(ex)                          =>
+        logger.error(s"Error while creating attribute ${attributeSeed.name}", ex)
+        internalServerError(ex.getMessage)
     }
   }
 
@@ -96,14 +91,18 @@ class AttributeApiServiceImpl(
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
     logger.info("Retrieving attribute {}", attributeId)
-    val commander: EntityRef[Command]          =
+    val commander: EntityRef[Command] =
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
-    val result: Future[StatusReply[Attribute]] = commander.ask(ref => GetAttribute(attributeId, ref))
-    onSuccess(result) {
-      case statusReply if statusReply.isSuccess => getAttributeById200(statusReply.getValue)
-      case statusReply                          =>
-        logger.error(s"Error while retrieving attribute $attributeId", statusReply.getError)
-        getAttributeById404(Problem(Option(statusReply.getError.getMessage), status = 404, "Attribute not found"))
+    val result: Future[Attribute]     = commander.askWithStatus(ref => GetAttribute(attributeId, ref))
+
+    onComplete(result) {
+      case Success(attribute)             => getAttributeById200(attribute)
+      case Failure(ex: AttributeNotFound) =>
+        logger.error(s"Error while retrieving attribute $attributeId", ex)
+        getAttributeById404(problemOf(StatusCodes.NotFound, ex))
+      case Failure(ex)                    =>
+        logger.error(s"Error while retrieving attribute $attributeId", ex)
+        internalServerError(ex.getMessage)
     }
   }
 
@@ -118,10 +117,10 @@ class AttributeApiServiceImpl(
       case Success(Some(attribute)) => getAttributeByName200(PersistentAttribute.toAPI(attribute))
       case Success(None)            =>
         logger.error(s"Error while retrieving attribute named $name - Attribute not found")
-        getAttributeByName404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
+        getAttributeByName404(problemOf(StatusCodes.NotFound, AttributeNotFoundByName(name)))
       case Failure(e)               =>
         logger.error(s"Error while retrieving attribute named $name - Attribute not found", e)
-        complete(StatusCodes.InternalServerError, Problem(Some(e.getMessage), status = 500, "Internal server error"))
+        internalServerError(e.getMessage)
     }
   }
 
@@ -147,9 +146,9 @@ class AttributeApiServiceImpl(
 
     onComplete(attributes) {
       case Success(attrs) => getAttributes200(AttributesResponse(attrs.sortBy(_.name)))
-      case Failure(e)     =>
-        logger.error(s"Error while retrieving attributes by search string = {}", search, e)
-        complete(StatusCodes.InternalServerError, Problem(Some(e.getMessage), status = 500, "Internal server error"))
+      case Failure(ex)    =>
+        logger.error(s"Error while retrieving attributes by search string = {}", search, ex)
+        internalServerError(ex.getMessage)
     }
   }
 
@@ -252,20 +251,19 @@ class AttributeApiServiceImpl(
     logger.info("Creating attributes set...")
     validateAttributes(attributeSeed) match {
 
-      case Valid(_) =>
+      case Valid(_)   =>
         val result: Future[Set[Attribute]] = addNewAttributes(attributeSeed)
         onComplete(result) {
           case Success(attributeList) =>
             createAttributes201(AttributesResponse(attributeList.toList.sortBy(_.name)))
           case Failure(ex)            =>
             logger.error(s"Error while creating attributes set", ex)
-            createAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes saving error"))
+            internalServerError(ex.getMessage)
         }
-
       case Invalid(e) =>
-        val errors = e.toList.mkString(",")
+        val errors = e.toList
         logger.error(s"Error while creating attributes set - $errors")
-        createAttributes400(Problem(Option(errors), status = 400, "Validation error"))
+        createAttributes400(problemOf(StatusCodes.BadRequest, errors))
     }
 
   }
@@ -283,17 +281,17 @@ class AttributeApiServiceImpl(
       case Success(Some(attribute)) => getAttributeByOriginAndCode200(PersistentAttribute.toAPI(attribute))
       case Success(None)            =>
         logger.error(s"Error while retrieving attribute having origin $origin and code $code - not found")
-        getAttributeByOriginAndCode404(Problem(Option("Attribute not found"), status = 404, "Attribute not found"))
-      case Failure(e)               =>
-        logger.error(s"Error while retrieving attribute having origin $origin and code $code", e)
-        complete(StatusCodes.InternalServerError, Problem(Some(e.getMessage), status = 500, "Internal server error"))
+        getAttributeByOriginAndCode404(problemOf(StatusCodes.BadRequest, AttributeNotFoundByInfo(origin, code)))
+      case Failure(ex)              =>
+        logger.error(s"Error while retrieving attribute having origin $origin and code $code", ex)
+        internalServerError(ex.getMessage)
     }
   }
 
-  override def loadCertifiedAttributes()(implicit
-    contexts: Seq[(String, String)],
-    toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(INTERNAL_ROLE) {
+  /**
+   * Code: 200, Message: Attributes loaded
+   */
+  override def loadCertifiedAttributes()(implicit contexts: Seq[(String, String)]): Route = authorize(INTERNAL_ROLE) {
     val result = for {
       bearer     <- getFutureBearer(contexts)
       categories <- partyRegistryService.getCategories(bearer)
@@ -314,7 +312,7 @@ class AttributeApiServiceImpl(
         loadCertifiedAttributes200
       case Failure(ex) =>
         logger.error(s"Error while loading certified attributes from proxy", ex)
-        loadCertifiedAttributes400(Problem(Option(ex.getMessage), status = 400, "Attributes loading error"))
+        internalServerError(ex.getMessage)
     }
   }
 
@@ -326,25 +324,21 @@ class AttributeApiServiceImpl(
     attributeId: String
   )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route =
     authorize(ADMIN_ROLE, API_ROLE) {
-      val commander: EntityRef[Command]     =
+      val commander: EntityRef[Command] =
         sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
-      val result: Future[StatusReply[Unit]] = commander.ask(ref => DeleteAttribute(attributeId, ref))
+      val result: Future[Unit]          = commander.askWithStatus(ref => DeleteAttribute(attributeId, ref))
+
       onComplete(result) {
-        case Success(statusReply) if statusReply.isSuccess => deleteAttributeById204
-        case Success(statusReply)                          =>
-          statusReply.getError match {
-            case AttributeNotFoundException =>
-              val problem = Problem(None, status = 404, "Attribute not found")
-              deleteAttributeById404(problem)
-            case ex                         =>
-              logger.error(s"Error while deleting attribute ${attributeId}", ex)
-              val problem = Problem(Option(ex.getMessage), status = 500, "Internal server error")
-              complete(StatusCodes.InternalServerError, problem)
-          }
-        case Failure(ex)                                   =>
-          logger.error(s"Error while deleting attribute ${attributeId}", ex)
-          val problem = Problem(Some(ex.getMessage), status = 500, "Internal server error")
-          complete(StatusCodes.InternalServerError, problem)
+        case Success(_)                     => deleteAttributeById204
+        case Failure(ex: AttributeNotFound) => deleteAttributeById404(problemOf(StatusCodes.NotFound, ex))
+        case Failure(ex)                    =>
+          logger.error(s"Error while deleting attribute $attributeId", ex)
+          internalServerError(ex.getMessage)
       }
     }
+
+  private def internalServerError(errorMessage: String): StandardRoute = {
+    val error = problemOf(StatusCodes.InternalServerError, GenericError(errorMessage))
+    complete(StatusCodes.InternalServerError, error)
+  }
 }

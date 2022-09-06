@@ -6,6 +6,5 @@ import it.pagopa.interop.attributeregistrymanagement.model.Problem
 
 class HealthApiMarshallerImpl extends HealthApiMarshaller {
 
-  override implicit def toEntityMarshallerProblem: ToEntityMarshaller[Problem] =
-    sprayJsonMarshaller[Problem](jsonFormat3(Problem))
+  override implicit def toEntityMarshallerProblem: ToEntityMarshaller[Problem] = entityMarshallerProblem
 }

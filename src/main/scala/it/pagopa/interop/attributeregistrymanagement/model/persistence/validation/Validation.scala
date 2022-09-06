@@ -2,22 +2,18 @@ package it.pagopa.interop.attributeregistrymanagement.model.persistence.validati
 
 import cats.data.ValidatedNel
 import cats.implicits.catsSyntaxValidatedId
+import it.pagopa.interop.attributeregistrymanagement.common.system.errors.ValidationException
 import it.pagopa.interop.attributeregistrymanagement.model.AttributeSeed
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.PersistentAttribute
 
 trait Validation {
 
-  def validateAttributeName(attribute: Option[PersistentAttribute]): ValidatedNel[String, Option[PersistentAttribute]] =
-    attribute.fold(attribute.validNel[String])(a =>
-      s"An attribute with name = '${a.name}' already exists on the registry".invalidNel[Option[PersistentAttribute]]
-    )
-
-  def validateAttributes(seeds: Seq[AttributeSeed]): ValidatedNel[String, Seq[AttributeSeed]] = {
+  def validateAttributes(seeds: Seq[AttributeSeed]): ValidatedNel[ValidationException, Seq[AttributeSeed]] = {
     val hasDuplicates = seeds.groupBy(_.name).exists { case (_, group) => group.size > 1 }
 
     if (hasDuplicates)
-      s"The request payload MUST not contain attributes with the same name".invalidNel[Seq[AttributeSeed]]
-    else seeds.validNel[String]
+      ValidationException("seed", s"The request payload MUST not contain attributes with the same name")
+        .invalidNel[Seq[AttributeSeed]]
+    else seeds.validNel[ValidationException]
   }
 
 }
