@@ -1,49 +1,45 @@
 package it.pagopa.interop.attributeregistrymanagement
 
-import cats.implicits._
-import munit.FutureFixture
-import akka.actor.testkit.typed.scaladsl.ActorTestKit
-import akka.actor.testkit.typed.scaladsl.ActorTestKitBase
-import org.scalacheck.Gen
+import akka.actor
+import akka.actor.testkit.typed.scaladsl.{ActorTestKit, ActorTestKitBase}
 import akka.actor.typed.ActorSystem
-import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshalling.{Marshal, ToEntityMarshaller}
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.RouteResult.routeToFunction
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model.headers.OAuth2BearerToken
-import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
-import it.pagopa.interop.partyregistryproxy.client.model.{Categories, Category}
-import it.pagopa.interop.attributeregistrymanagement.api.impl._
-import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, Problem}
-import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
-import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
-
-import java.net.InetAddress
-import scala.concurrent.{ExecutionContext, Future}
-import java.util.UUID
-import java.time.OffsetDateTime
-import it.pagopa.interop.attributeregistrymanagement.model.AttributesResponse
-import akka.http.scaladsl.model.StatusCodes._
-import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiMarshaller
-import akka.cluster.typed.{Cluster, Join}
 import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
-import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.behaviorFactory
+import akka.cluster.typed.{Cluster, Join}
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshalling.{Marshal, ToEntityMarshaller}
+import akka.http.scaladsl.model.HttpMethods._
+import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.OAuth2BearerToken
+import akka.http.scaladsl.server.RouteResult.routeToFunction
 import akka.http.scaladsl.server.directives.SecurityDirectives
-import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
-import it.pagopa.interop.attributeregistrymanagement.api.AttributeApi
+import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
+import cats.implicits._
+import it.pagopa.interop.attributeregistrymanagement.api.{
+  AttributeApi,
+  AttributeApiMarshaller,
+  AttributeApiService,
+  HealthApi
+}
+import it.pagopa.interop.attributeregistrymanagement.api.impl._
+import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
+import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
+import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, AttributesResponse, Problem}
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
+import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.behaviorFactory
+import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
 import it.pagopa.interop.commons.utils.AkkaUtils
-import it.pagopa.interop.attributeregistrymanagement.api.HealthApi
-import akka.actor
-import it.pagopa.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
-import munit.ScalaCheckSuite
+import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
+import it.pagopa.interop.partyregistryproxy.client.model.{Categories, Category}
+import munit.{FutureFixture, ScalaCheckSuite}
+import org.scalacheck.Gen
 
-import scala.concurrent.Await
+import java.net.InetAddress
+import java.time.OffsetDateTime
+import java.util.UUID
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 trait AkkaTestSuite extends ScalaCheckSuite {
 
