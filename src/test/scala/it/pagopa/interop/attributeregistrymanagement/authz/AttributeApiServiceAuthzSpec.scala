@@ -34,7 +34,7 @@ class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest
     testPersistentEntity,
     new PartyRegistryService   {
       override def getCategories(bearerToken: String)(implicit contexts: Seq[(String, String)]): Future[Categories] =
-        Future.successful(Categories(Seq.empty))
+        Future.successful(Categories(Seq.empty, 0))
     }
   )
 

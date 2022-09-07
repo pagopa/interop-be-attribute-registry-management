@@ -4,7 +4,6 @@ import cats.implicits._
 import munit.FutureFixture
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.testkit.typed.scaladsl.ActorTestKitBase
-
 import org.scalacheck.Gen
 import akka.actor.typed.ActorSystem
 import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
@@ -40,7 +39,9 @@ import it.pagopa.interop.attributeregistrymanagement.server.Controller
 import it.pagopa.interop.commons.utils.AkkaUtils
 import it.pagopa.interop.attributeregistrymanagement.api.HealthApi
 import akka.actor
+import it.pagopa.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
 import munit.ScalaCheckSuite
+
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
@@ -77,7 +78,7 @@ trait AkkaTestSuite extends ScalaCheckSuite {
 
       val partyRegistryService: PartyRegistryService = new PartyRegistryService {
         override def getCategories(bearerToken: String)(implicit contexts: Seq[(String, String)]): Future[Categories] =
-          Future.successful(Categories(Seq(Category("YADA", "Proxied", "test", "IPA"))))
+          Future.successful(Categories(Seq(Category("YADA", "Proxied", "test", "IPA")), 1))
       }
 
       val healthApi: HealthApi = new HealthApi(
