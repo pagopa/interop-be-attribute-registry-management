@@ -54,7 +54,8 @@
     {
       "verb": "GET",
       "roles": [
-        "admin"
+        "admin",
+        "internal"
       ],
       "route": "getAttributeByOriginAndCode"
     },
