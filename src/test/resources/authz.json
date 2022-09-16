@@ -56,7 +56,8 @@
       "verb": "GET",
       "roles": [
         "admin",
-        "internal"
+        "internal",
+        "m2m"
       ],
       "route": "getAttributeByOriginAndCode"
     },

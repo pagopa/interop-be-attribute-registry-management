@@ -275,7 +275,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, INTERNAL_ROLE) {
+  ): Route = authorize(ADMIN_ROLE, INTERNAL_ROLE, M2M_ROLE) {
     logger.info(s"Retrieving attribute having origin $origin and code $code")
     onComplete(attributeByCommand(GetAttributeByInfo(AttributeInfo(origin, code), _))) {
       case Success(Some(attribute)) => getAttributeByOriginAndCode200(PersistentAttribute.toAPI(attribute))
