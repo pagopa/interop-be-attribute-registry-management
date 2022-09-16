@@ -38,7 +38,7 @@ object AkkaTestConfiguration {
 object AdminMockAuthenticator extends Authenticator[Seq[(String, String)]] {
   override def apply(credentials: Credentials): Option[Seq[(String, String)]] = {
     credentials match {
-      case Provided(identifier) => Some(Seq(BEARER -> identifier, USER_ROLES -> "admin,internal"))
+      case Provided(identifier) => Some(Seq(BEARER -> identifier, USER_ROLES -> "admin,internal,m2m"))
       case Missing              => None
     }
   }

@@ -40,7 +40,8 @@
       "verb": "GET",
       "roles": [
         "admin",
-        "api"
+        "api",
+        "m2m"
       ],
       "route": "getBulkedAttributes"
     },

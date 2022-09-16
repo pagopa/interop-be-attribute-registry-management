@@ -155,7 +155,7 @@ class AttributeApiServiceImpl(
   override def getBulkedAttributes(ids: Option[String])(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE) {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
     logger.info("Retrieving attributes in bulk fashion by identifiers in ({})", ids)
     val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(ids.getOrElse("").split(",").toList) { id =>
       val commander: EntityRef[Command] = {
