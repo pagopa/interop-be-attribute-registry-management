@@ -61,7 +61,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE) {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
     logger.info("Creating attribute {}", attributeSeed.name)
 
     val result: Future[Attribute] = attributeByCommand(GetAttributeByName(attributeSeed.name, _)).flatMap {
