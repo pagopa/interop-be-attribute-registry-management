@@ -68,8 +68,8 @@ trait AkkaTestSuite extends ScalaCheckSuite {
 
       val wrappingDirective = SecurityDirectives.authenticateOAuth2("SecurityRealm", AdminMockAuthenticator)
 
-      val uuidSupplier: UUIDSupplier                 = new UUIDSupplier { def get = UUID.randomUUID() }
-      val timeSupplier: OffsetDateTimeSupplier       = new OffsetDateTimeSupplier { def get = OffsetDateTime.now() }
+      val uuidSupplier: UUIDSupplier                 = () => UUID.randomUUID()
+      val timeSupplier: OffsetDateTimeSupplier       = () => OffsetDateTime.now()
       val partyApiMarshaller: AttributeApiMarshaller = AttributeApiMarshallerImpl
 
       val partyRegistryService: PartyRegistryService = new PartyRegistryService {

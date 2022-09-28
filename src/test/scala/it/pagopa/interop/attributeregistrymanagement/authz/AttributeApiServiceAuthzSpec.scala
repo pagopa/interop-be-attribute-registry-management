@@ -10,7 +10,6 @@ import it.pagopa.interop.attributeregistrymanagement.model.persistence.Command
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.attributePersistentEntity
 import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
 import it.pagopa.interop.attributeregistrymanagement.util.ClusteredMUnitRouteTest
-import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.interop.partyregistryproxy.client.model.Categories
 import munit.FunSuite
 
@@ -23,16 +22,12 @@ class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest
   override val testPersistentEntity: Entity[Command, ShardingEnvelope[Command]] = attributePersistentEntity
 
   val service = new AttributeApiServiceImpl(
-    new UUIDSupplier           {
-      override def get: UUID = UUID.randomUUID()
-    },
-    new OffsetDateTimeSupplier {
-      override def get: OffsetDateTime = OffsetDateTime.now()
-    },
+    () => UUID.randomUUID(),
+    () => OffsetDateTime.now(),
     testTypedSystem,
     testAkkaSharding,
     testPersistentEntity,
-    new PartyRegistryService   {
+    new PartyRegistryService {
       override def getCategories(bearerToken: String)(implicit contexts: Seq[(String, String)]): Future[Categories] =
         Future.successful(Categories(Seq.empty, 0))
     }
