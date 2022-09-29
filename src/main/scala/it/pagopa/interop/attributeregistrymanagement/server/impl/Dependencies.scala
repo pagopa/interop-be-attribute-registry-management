@@ -29,7 +29,6 @@ import it.pagopa.interop.commons.jwt.{JWTConfiguration, KID, PublicKeysHolder, S
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions._
-import it.pagopa.interop.commons.utils.service.impl.{OffsetDateTimeSupplierImpl, UUIDSupplierImpl}
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import it.pagopa.interop.partyregistryproxy.client.api.CategoryApi
 import slick.basic.DatabaseConfig
@@ -39,8 +38,8 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 trait Dependencies {
 
-  val uuidSupplier: UUIDSupplier               = new UUIDSupplierImpl
-  val dateTimeSupplier: OffsetDateTimeSupplier = OffsetDateTimeSupplierImpl
+  val uuidSupplier: UUIDSupplier               = UUIDSupplier
+  val dateTimeSupplier: OffsetDateTimeSupplier = OffsetDateTimeSupplier
 
   val behaviorFactory: EntityContext[Command] => Behavior[Command] = { entityContext =>
     val i = math.abs(entityContext.entityId.hashCode % numberOfProjectionTags)
@@ -95,7 +94,7 @@ trait Dependencies {
   ): AttributeApi = new AttributeApi(
     new AttributeApiServiceImpl(
       uuidSupplier,
-      OffsetDateTimeSupplierImpl,
+      OffsetDateTimeSupplier,
       actorSystem,
       sharding,
       attributePersistentEntity,

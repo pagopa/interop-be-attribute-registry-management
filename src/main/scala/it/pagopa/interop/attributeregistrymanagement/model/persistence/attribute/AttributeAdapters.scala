@@ -23,13 +23,13 @@ object AttributeAdapters {
       uuidSupplier: UUIDSupplier,
       timeSupplier: OffsetDateTimeSupplier
     ): PersistentAttribute = PersistentAttribute(
-      id = uuidSupplier.get,
+      id = uuidSupplier.get(),
       code = seed.code,
       kind = PersistentAttributeKind.fromApi(seed.kind),
       description = seed.description,
       origin = seed.origin,
       name = seed.name,
-      creationTime = timeSupplier.get
+      creationTime = timeSupplier.get()
     )
   }
 
