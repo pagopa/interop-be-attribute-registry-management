@@ -111,8 +111,8 @@ trait ItSpecHelper
   }
 
   def createAttribute(attributeId: UUID): Attribute = {
-    (() => mockUUIDSupplier.get).expects().returning(attributeId).once()
-    (() => mockTimeSupplier.get).expects().returning(OffsetDateTime.now).once()
+    (() => mockUUIDSupplier.get()).expects().returning(attributeId).once()
+    (() => mockTimeSupplier.get()).expects().returning(OffsetDateTime.now).once()
 
     val seed = AttributeSeed(
       code = Some("code"),
