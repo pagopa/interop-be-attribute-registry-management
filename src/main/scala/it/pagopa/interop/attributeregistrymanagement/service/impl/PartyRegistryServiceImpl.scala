@@ -17,7 +17,6 @@ final case class PartyRegistryServiceImpl(invoker: PartyProxyInvoker, api: Categ
   override def getCategories(bearerToken: String)(implicit contexts: Seq[(String, String)]): Future[Categories] = {
     val request: ApiRequest[Categories] =
       api.getCategories(origin = None, page = Some(1), limit = Some(100))(BearerToken(bearerToken))
-    logger.info(s"getCategories ${request.toString}")
     invoker.invoke(request, "Retrieving categories")
   }
 
