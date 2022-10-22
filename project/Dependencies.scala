@@ -143,7 +143,7 @@ object Dependencies {
       scalatest.core              % IntegrationTest,
       "org.scalameta"            %% "munit"                          % "1.0.0-M6"                 % Test,
       "org.scalameta"            %% "munit-scalacheck"               % "1.0.0-M6"                 % Test,
-      "com.softwaremill.diffx"   %% "diffx-munit"                    % "0.7.1"                    % Test,
+      "com.softwaremill.diffx"   %% "diffx-munit"                    % "0.8.0"                    % Test,
       "com.dimafeng"             %% "testcontainers-scala-scalatest" % testcontainersScalaVersion % IntegrationTest
     )
     lazy val client: Seq[ModuleID]    =
