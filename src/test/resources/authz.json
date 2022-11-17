@@ -14,6 +14,7 @@
       "roles": [
         "admin",
         "api",
+        "security",
         "m2m"
       ],
       "route": "getAttributeById"
@@ -23,6 +24,7 @@
       "roles": [
         "admin",
         "api",
+        "security",
         "m2m"
       ],
       "route": "getAttributeByName"
@@ -32,6 +34,7 @@
       "roles": [
         "admin",
         "api",
+        "security",
         "m2m"
       ],
       "route": "getAttributes"
@@ -41,6 +44,7 @@
       "roles": [
         "admin",
         "api",
+        "security",
         "m2m"
       ],
       "route": "getBulkedAttributes"
