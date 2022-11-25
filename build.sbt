@@ -74,8 +74,15 @@ val generated: Project = project
   .configs(IntegrationTest)
   .settings(Defaults.itSettings: _*)
   .in(file("generated"))
-  .settings(scalacOptions := Seq(), scalafmtOnCompile := true, libraryDependencies := Dependencies.Jars.`server`)
-  .enablePlugins(NoPublishPlugin)
+  .settings(
+    scalacOptions       := Seq(),
+    scalafmtOnCompile   := true,
+    libraryDependencies := Dependencies.Jars.`server`,
+    publish / skip      := true,
+    publish             := (()),
+    publishLocal        := (()),
+    publishTo           := None
+  )
   .setupBuildInfo
 
 val models: Project = project
@@ -123,5 +130,6 @@ val root: Project = (project in file("."))
   .aggregate(client, models)
   .dependsOn(generated, models)
   .enablePlugins(JavaAppPackaging)
+  .enablePlugins(DockerPlugin)
   .enablePlugins(NoPublishPlugin)
   .setupBuildInfo
