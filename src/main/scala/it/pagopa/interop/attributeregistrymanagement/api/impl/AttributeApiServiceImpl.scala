@@ -89,7 +89,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
     logger.info("Retrieving attribute {}", attributeId)
     val commander: EntityRef[Command] =
       sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
@@ -110,7 +110,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
     logger.info("Retrieving attribute named {}", name)
 
     onComplete(attributeByCommand(GetAttributeByName(name, _))) {
@@ -128,7 +128,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
     logger.info("Retrieving attributes by search string = {}", search)
 
     val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards)
@@ -155,7 +155,7 @@ class AttributeApiServiceImpl(
   override def getBulkedAttributes(ids: Option[String])(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
+  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
     logger.info("Retrieving attributes in bulk fashion by identifiers in ({})", ids)
     val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(ids.getOrElse("").split(",").toList) { id =>
       val commander: EntityRef[Command] = {
