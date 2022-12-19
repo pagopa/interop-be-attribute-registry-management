@@ -61,11 +61,6 @@ class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest
     validateAuthorization(endpoint, { implicit c: Seq[(String, String)] => service.getBulkedAttributes(None) })
   }
 
-  test("method authorization must succeed for createAttributes") {
-    val endpoint = AuthorizedRoutes.endpoints("createAttributes")
-    validateAuthorization(endpoint, { implicit c: Seq[(String, String)] => service.createAttributes(Seq.empty) })
-  }
-
   test("method authorization must succeed for getAttributeByOriginAndCode") {
     val endpoint = AuthorizedRoutes.endpoints("getAttributeByOriginAndCode")
     validateAuthorization(
