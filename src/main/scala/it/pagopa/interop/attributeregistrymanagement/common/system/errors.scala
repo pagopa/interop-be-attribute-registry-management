@@ -11,7 +11,7 @@ object errors {
 
   final case class AttributeNotFoundByName(name: String) extends ComponentError("0003", s"Attribute $name not found")
 
-  final case class AttributeNotFoundByInfo(origin: String, attrCode: String)
+  final case class AttributeNotFoundByExternalId(origin: String, attrCode: String)
       extends ComponentError("0004", s"Attribute not found for $origin/$attrCode")
 
   final case class ValidationException(field: String, validationError: String)

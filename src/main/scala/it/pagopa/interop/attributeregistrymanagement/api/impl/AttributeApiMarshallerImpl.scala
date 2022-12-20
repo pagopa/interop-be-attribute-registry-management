@@ -7,7 +7,7 @@ import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiMarshaller
 import it.pagopa.interop.attributeregistrymanagement.model._
 import spray.json._
 
-final object AttributeApiMarshallerImpl extends AttributeApiMarshaller with SprayJsonSupport with DefaultJsonProtocol {
+object AttributeApiMarshallerImpl extends AttributeApiMarshaller with SprayJsonSupport with DefaultJsonProtocol {
   override implicit def fromEntityUnmarshallerAttributeSeed: FromEntityUnmarshaller[AttributeSeed] =
     sprayJsonUnmarshaller[AttributeSeed]
 
@@ -20,8 +20,5 @@ final object AttributeApiMarshallerImpl extends AttributeApiMarshaller with Spra
 
   implicit def toEntityMarshallerAttributeSeed: ToEntityMarshaller[AttributeSeed] = sprayJsonMarshaller[AttributeSeed]
   implicit def fromEntityUnmarshallerAttribute: FromEntityUnmarshaller[Attribute] = sprayJsonUnmarshaller[Attribute]
-
-  override implicit def fromEntityUnmarshallerAttributeSeedList: FromEntityUnmarshaller[Seq[AttributeSeed]] =
-    sprayJsonUnmarshaller[Seq[AttributeSeed]]
 
 }
