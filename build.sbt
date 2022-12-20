@@ -9,7 +9,7 @@ ThisBuild / dependencyOverrides ++= Dependencies.Jars.overrides
 ThisBuild / version           := ComputeVersion.version
 
 ThisBuild / githubOwner      := "pagopa"
-ThisBuild / githubRepository := "interop-be-tenant-management"
+ThisBuild / githubRepository := "interop-be-attribute-registry-management"
 ThisBuild / resolvers += Resolver.githubPackages("pagopa")
 
 lazy val generateCode = taskKey[Unit]("A task for generating the code starting from the swagger definition")
