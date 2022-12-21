@@ -37,6 +37,8 @@ import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
+import com.typesafe.scalalogging.Logger
+import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 
 trait Dependencies {
 
@@ -103,7 +105,7 @@ trait Dependencies {
       partyProcessService(blockingEc)
     ),
     AttributeApiMarshallerImpl,
-    jwtReader.OAuth2JWTValidatorAsContexts
+    jwtReader.OAuth2JWTValidatorAsContexts(Logger.takingImplicit[ContextFieldsToLog]("OAuth2JWTValidatorAsContexts"))
   )
 
   val healthApi: HealthApi = new HealthApi(
