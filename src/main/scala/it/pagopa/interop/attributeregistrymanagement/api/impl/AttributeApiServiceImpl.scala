@@ -127,7 +127,10 @@ class AttributeApiServiceImpl(
     logger.info(operationLabel)
 
     val result: Future[AttributesResponse] = Future
-      .traverse(ids.getOrElse("").split(",").toList)(id => commander(id).askWithStatus(ref => GetAttribute(id, ref)))
+      .traverse(ids.getOrElse("").split(",").toList.filter(_.nonEmpty))(id =>
+        commander(id).ask(ref => GetAttribute(id, ref))
+      )
+      .map(_.collect { case r if r.isSuccess => r.getValue })
       .map(AttributesResponse)
 
     onComplete(result) { getBulkedAttributesResponse[AttributesResponse](operationLabel)(getBulkedAttributes200) }
