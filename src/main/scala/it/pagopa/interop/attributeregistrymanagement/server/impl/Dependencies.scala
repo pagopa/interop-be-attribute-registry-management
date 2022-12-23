@@ -42,6 +42,9 @@ import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLo
 
 trait Dependencies {
 
+  implicit val loggerTI: LoggerTakingImplicit[ContextFieldsToLog] =
+    Logger.takingImplicit[ContextFieldsToLog]("OAuth2JWTValidatorAsContexts")
+
   val uuidSupplier: UUIDSupplier               = UUIDSupplier
   val dateTimeSupplier: OffsetDateTimeSupplier = OffsetDateTimeSupplier
 
@@ -105,7 +108,7 @@ trait Dependencies {
       partyProcessService(blockingEc)
     ),
     AttributeApiMarshallerImpl,
-    jwtReader.OAuth2JWTValidatorAsContexts(Logger.takingImplicit[ContextFieldsToLog]("OAuth2JWTValidatorAsContexts"))
+    jwtReader.OAuth2JWTValidatorAsContexts
   )
 
   val healthApi: HealthApi = new HealthApi(
