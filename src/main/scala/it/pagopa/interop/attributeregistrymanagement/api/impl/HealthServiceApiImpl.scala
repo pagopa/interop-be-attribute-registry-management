@@ -18,6 +18,7 @@ class HealthServiceApiImpl extends HealthApiService {
       `type` = "about:blank",
       status = StatusCodes.OK.intValue,
       title = StatusCodes.OK.defaultMessage,
+      correlationId = None,
       errors = Seq.empty[ProblemError]
     )
     complete(response.status, response)
