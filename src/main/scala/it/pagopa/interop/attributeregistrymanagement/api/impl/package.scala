@@ -9,7 +9,7 @@ import spray.json.{DefaultJsonProtocol, RootJsonFormat}
 package object impl extends SprayJsonSupport with DefaultJsonProtocol {
 
   implicit val problemErrorFormat: RootJsonFormat[ProblemError]             = jsonFormat2(ProblemError)
-  implicit val problemFormat: RootJsonFormat[Problem]                       = jsonFormat5(Problem)
+  implicit val problemFormat: RootJsonFormat[Problem]                       = jsonFormat6(Problem)
   implicit val attributeSeedFormat: RootJsonFormat[AttributeSeed]           = jsonFormat5(AttributeSeed)
   implicit val attributeFormat: RootJsonFormat[Attribute]                   = jsonFormat7(Attribute)
   implicit val attributesResponseFormat: RootJsonFormat[AttributesResponse] = jsonFormat1(AttributesResponse)
