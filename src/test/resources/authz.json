@@ -50,14 +50,6 @@
       "route": "getBulkedAttributes"
     },
     {
-      "verb": "POST",
-      "roles": [
-        "admin",
-        "api"
-      ],
-      "route": "createAttributes"
-    },
-    {
       "verb": "GET",
       "roles": [
         "admin",

@@ -4,15 +4,13 @@ import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
 import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
 import akka.http.scaladsl.marshalling.ToEntityMarshaller
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives.{complete, onComplete, onSuccess}
-import akka.http.scaladsl.server.{Route, StandardRoute}
-import akka.pattern.StatusReply
+import akka.http.scaladsl.server.Directives.onComplete
+import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
 import it.pagopa.interop.attributeregistrymanagement.api.AttributeApiService
+import it.pagopa.interop.attributeregistrymanagement.api.impl.ResponseHandlers._
 import it.pagopa.interop.attributeregistrymanagement.common.system.errors._
 import it.pagopa.interop.attributeregistrymanagement.model._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence._
@@ -22,13 +20,12 @@ import it.pagopa.interop.attributeregistrymanagement.model.persistence.validatio
 import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
 import it.pagopa.interop.commons.jwt._
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
-import it.pagopa.interop.commons.utils.AkkaUtils.getFutureBearer
-import it.pagopa.interop.commons.utils.errors.GenericComponentErrors.{GenericError, OperationForbidden}
+import it.pagopa.interop.commons.utils.AkkaUtils.{getFutureBearer, getShard}
+import it.pagopa.interop.commons.utils.TypeConversions.OptionOps
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
 class AttributeApiServiceImpl(
   uuidSupplier: UUIDSupplier,
@@ -41,48 +38,29 @@ class AttributeApiServiceImpl(
     extends AttributeApiService
     with Validation {
 
-  private val logger = Logger.takingImplicit[ContextFieldsToLog](this.getClass)
+  private implicit val logger: LoggerTakingImplicit[ContextFieldsToLog] =
+    Logger.takingImplicit[ContextFieldsToLog](this.getClass)
 
   implicit val timeout: Timeout = 300.seconds
 
-  private val settings: ClusterShardingSettings = entity.settings match {
-    case None    => ClusterShardingSettings(system)
-    case Some(s) => s
-  }
-
-  @inline private def getShard(id: String): String = (math.abs(id.hashCode) % settings.numberOfShards).toString
-
-  private[this] def authorize(roles: String*)(
-    route: => Route
-  )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route =
-    authorizeInterop(hasPermissions(roles: _*), problemOf(StatusCodes.Forbidden, OperationForbidden))(route)
+  private val settings: ClusterShardingSettings = entity.settings.getOrElse(ClusterShardingSettings(system))
 
   override def createAttribute(attributeSeed: AttributeSeed)(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE) {
-    logger.info("Creating attribute {}", attributeSeed.name)
+    val operationLabel: String = s"Creating attribute ${attributeSeed.name}"
+    logger.info(operationLabel)
 
     val result: Future[Attribute] = attributeByCommand(GetAttributeByName(attributeSeed.name, _)).flatMap {
       case None       =>
-        val persistentAttribute           = PersistentAttribute.fromSeed(attributeSeed, uuidSupplier, timeSupplier)
-        val shard                         = getShard(persistentAttribute.id.toString)
-        val commander: EntityRef[Command] = sharding.entityRefFor(AttributePersistentBehavior.TypeKey, shard)
-        commander.ask(CreateAttribute(persistentAttribute, _))
+        val persistentAttribute = PersistentAttribute.fromSeed(attributeSeed, uuidSupplier, timeSupplier)
+        commander(persistentAttribute.id.toString).ask(CreateAttribute(persistentAttribute, _))
       case Some(attr) => Future.failed(AttributeAlreadyPresent(attr.name))
     }
 
-    onComplete(result) {
-      case Success(attribute)                   => createAttribute201(attribute)
-      case Failure(ex: AttributeAlreadyPresent) =>
-        val error: String = s"An attribute with name = '${ex.name}' already exists on the registry"
-        logger.error(s"Error while creating attribute ${ex.name} - $error")
-        createAttribute409(problemOf(StatusCodes.Conflict, ex))
-      case Failure(ex)                          =>
-        logger.error(s"Error while creating attribute ${attributeSeed.name}", ex)
-        internalServerError(ex.getMessage)
-    }
+    onComplete(result) { getAgreementResponse[Attribute](operationLabel)(createAttribute201) }
   }
 
   override def getAttributeById(attributeId: String)(implicit
@@ -90,20 +68,12 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
-    logger.info("Retrieving attribute {}", attributeId)
-    val commander: EntityRef[Command] =
-      sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
-    val result: Future[Attribute]     = commander.askWithStatus(ref => GetAttribute(attributeId, ref))
+    val operationLabel: String = s"Retrieving attribute $attributeId"
+    logger.info(operationLabel)
 
-    onComplete(result) {
-      case Success(attribute)             => getAttributeById200(attribute)
-      case Failure(ex: AttributeNotFound) =>
-        logger.error(s"Error while retrieving attribute $attributeId", ex)
-        getAttributeById404(problemOf(StatusCodes.NotFound, ex))
-      case Failure(ex)                    =>
-        logger.error(s"Error while retrieving attribute $attributeId", ex)
-        internalServerError(ex.getMessage)
-    }
+    val result: Future[Attribute] = commander(attributeId).askWithStatus(ref => GetAttribute(attributeId, ref))
+
+    onComplete(result) { getAttributeByIdResponse[Attribute](operationLabel)(getAttributeById200) }
   }
 
   override def getAttributeByName(name: String)(implicit
@@ -111,16 +81,16 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
-    logger.info("Retrieving attribute named {}", name)
+    val operationLabel: String = s"Retrieving attribute named $name"
+    logger.info(operationLabel)
 
-    onComplete(attributeByCommand(GetAttributeByName(name, _))) {
-      case Success(Some(attribute)) => getAttributeByName200(PersistentAttribute.toAPI(attribute))
-      case Success(None)            =>
-        logger.error(s"Error while retrieving attribute named $name - Attribute not found")
-        getAttributeByName404(problemOf(StatusCodes.NotFound, AttributeNotFoundByName(name)))
-      case Failure(e)               =>
-        logger.error(s"Error while retrieving attribute named $name - Attribute not found", e)
-        internalServerError(e.getMessage)
+    val result: Future[Attribute] = for {
+      maybeAttribute <- attributeByCommand(GetAttributeByName(name, _))
+      attribute      <- maybeAttribute.toFuture(AttributeNotFoundByName(name))
+    } yield PersistentAttribute.toAPI(attribute)
+
+    onComplete(result) {
+      getAttributeByNameResponse[Attribute](operationLabel)(getAttributeByName200)
     }
   }
 
@@ -129,45 +99,41 @@ class AttributeApiServiceImpl(
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
-    logger.info("Retrieving attributes by search string = {}", search)
+    val operationLabel: String = s"Retrieving attributes by search string $search"
+    logger.info(operationLabel)
 
     val commanders: Seq[EntityRef[Command]] = (0 until settings.numberOfShards)
-      .map(_.toString())
+      .map(_.toString)
       .map(sharding.entityRefFor(AttributePersistentBehavior.TypeKey, _))
 
     def searchFn(text: String): Boolean = search.fold(true) { parameter =>
       text.toLowerCase.contains(parameter.toLowerCase)
     }
 
-    val attributes: Future[List[Attribute]] =
+    val attributes: Future[AttributesResponse] =
       Future
         .traverse(commanders.toList)(slices(_, 100))
-        .map(_.flatten.filter(attr => searchFn(attr.name)))
+        .map(_.flatten.filter(attr => searchFn(attr.name)).sortBy(_.name))
+        .map(AttributesResponse)
 
-    onComplete(attributes) {
-      case Success(attrs) => getAttributes200(AttributesResponse(attrs.sortBy(_.name)))
-      case Failure(ex)    =>
-        logger.error(s"Error while retrieving attributes by search string = {}", search, ex)
-        internalServerError(ex.getMessage)
-    }
+    onComplete(attributes) { getAttributesResponse[AttributesResponse](operationLabel)(getAttributes200) }
   }
 
   override def getBulkedAttributes(ids: Option[String])(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]
   ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
-    logger.info("Retrieving attributes in bulk fashion by identifiers in ({})", ids)
-    val result: Future[Seq[StatusReply[Attribute]]] = Future.traverse(ids.getOrElse("").split(",").toList) { id =>
-      val commander: EntityRef[Command] = {
-        sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id))
-      }
-      commander.ask(ref => GetAttribute(id, ref))
-    }
+    val operationLabel: String = s"Retrieving attributes in bulk by identifiers in (${ids.getOrElse("")})"
+    logger.info(operationLabel)
 
-    onSuccess(result) { replies =>
-      val response = AttributesResponse(replies.filter(_.isSuccess).map(_.getValue))
-      getBulkedAttributes200(response)
-    }
+    val result: Future[AttributesResponse] = Future
+      .traverse(ids.getOrElse("").split(",").toList.filter(_.nonEmpty))(id =>
+        commander(id).ask(ref => GetAttribute(id, ref))
+      )
+      .map(_.collect { case r if r.isSuccess => r.getValue })
+      .map(AttributesResponse)
+
+    onComplete(result) { getBulkedAttributesResponse[AttributesResponse](operationLabel)(getBulkedAttributes200) }
   }
 
   private def slices(commander: EntityRef[Command], sliceSize: Int): Future[List[Attribute]] = {
@@ -227,9 +193,7 @@ class AttributeApiServiceImpl(
 
     def createAttribute(seed: AttributeSeed): Future[Attribute] = {
       val persistentAttribute: PersistentAttribute = PersistentAttribute.fromSeed(seed, uuidSupplier, timeSupplier)
-      val commander: EntityRef[Command]            =
-        sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(persistentAttribute.id.toString))
-      commander.ask(ref => CreateAttribute(persistentAttribute, ref))
+      commander(persistentAttribute.id.toString).ask(ref => CreateAttribute(persistentAttribute, ref))
     }
 
     // for all the not existing attributes, execute the command to persist them through event sourcing
@@ -240,105 +204,59 @@ class AttributeApiServiceImpl(
     } yield deltaAttributes.attributes ++ newlyCreatedAttributes
   }
 
-  /** Code: 201, Message: Array of created attributes and already exising ones..., DataType: AttributesResponse
-    * Code: 400, Message: Bad Request, DataType: Problem
-    */
-  override def createAttributes(attributeSeed: Seq[AttributeSeed])(implicit
-    contexts: Seq[(String, String)],
-    toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
-    toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE) {
-    logger.info("Creating attributes set...")
-    validateAttributes(attributeSeed) match {
-
-      case Valid(_)   =>
-        val result: Future[Set[Attribute]] = addNewAttributes(attributeSeed)
-        onComplete(result) {
-          case Success(attributeList) =>
-            createAttributes201(AttributesResponse(attributeList.toList.sortBy(_.name)))
-          case Failure(ex)            =>
-            logger.error(s"Error while creating attributes set", ex)
-            internalServerError(ex.getMessage)
-        }
-      case Invalid(e) =>
-        val errors = e.toList
-        logger.error(s"Error while creating attributes set - $errors")
-        createAttributes400(problemOf(StatusCodes.BadRequest, errors))
-    }
-
-  }
-
-  /** Code: 200, Message: Attribute data, DataType: Attribute
-    * Code: 404, Message: Attribute not found, DataType: Problem
-    */
   override def getAttributeByOriginAndCode(origin: String, code: String)(implicit
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
   ): Route = authorize(ADMIN_ROLE, INTERNAL_ROLE, M2M_ROLE) {
-    logger.info(s"Retrieving attribute having origin $origin and code $code")
-    onComplete(attributeByCommand(GetAttributeByInfo(AttributeInfo(origin, code), _))) {
-      case Success(Some(attribute)) => getAttributeByOriginAndCode200(PersistentAttribute.toAPI(attribute))
-      case Success(None)            =>
-        logger.error(s"Error while retrieving attribute having origin $origin and code $code - not found")
-        getAttributeByOriginAndCode404(problemOf(StatusCodes.BadRequest, AttributeNotFoundByInfo(origin, code)))
-      case Failure(ex)              =>
-        logger.error(s"Error while retrieving attribute having origin $origin and code $code", ex)
-        internalServerError(ex.getMessage)
-    }
-  }
+    val operationLabel: String = s"Retrieving attribute having origin $origin and code $code"
+    logger.info(operationLabel)
 
-  /**
-   * Code: 200, Message: Attributes loaded
-   */
-  override def loadCertifiedAttributes()(implicit contexts: Seq[(String, String)]): Route = authorize(INTERNAL_ROLE) {
-    val result = for {
-      bearer     <- getFutureBearer(contexts)
-      categories <- partyRegistryService.getCategories(bearer)
-      attributeSeeds = categories.items.map(c =>
-        AttributeSeed(
-          code = Option(c.code),
-          kind = AttributeKind.CERTIFIED,
-          description = c.name, // passing the name since no description exists at party-registry-proxy
-          origin = Option(c.origin),
-          name = c.name
-        )
-      )
-      _ <- addNewAttributes(attributeSeeds)
-    } yield ()
+    val result: Future[Attribute] = for {
+      maybeAttribute <- attributeByCommand(GetAttributeByInfo(AttributeInfo(origin, code), _))
+      attribute      <- maybeAttribute.toFuture(AttributeNotFoundByExternalId(origin, code))
+    } yield PersistentAttribute.toAPI(attribute)
 
     onComplete(result) {
-      case Success(_)  =>
-        loadCertifiedAttributes200
-      case Failure(ex) =>
-        logger.error(s"Error while loading certified attributes from proxy", ex)
-        internalServerError(ex.getMessage)
+      getAttributeByOriginAndCodeResponse[Attribute](operationLabel)(getAttributeByOriginAndCode200)
     }
   }
 
-  /**
-   * Code: 204, Message: Attribute deleted
-   * Code: 404, Message: Attribute not found, DataType: Problem
-   */
+  override def loadCertifiedAttributes()(implicit contexts: Seq[(String, String)]): Route =
+    authorize(INTERNAL_ROLE) {
+      val operationLabel: String = s"Loading certified attributes from Party Registry"
+      logger.info(operationLabel)
+
+      val result: Future[Unit] = for {
+        bearer     <- getFutureBearer(contexts)
+        categories <- partyRegistryService.getCategories(bearer)
+        attributeSeeds = categories.items.map(c =>
+          AttributeSeed(
+            code = Option(c.code),
+            kind = AttributeKind.CERTIFIED,
+            description = c.name, // passing the name since no description exists at party-registry-proxy
+            origin = Option(c.origin),
+            name = c.name
+          )
+        )
+        _ <- addNewAttributes(attributeSeeds)
+      } yield ()
+
+      onComplete(result) { loadCertifiedAttributesResponse[Unit](operationLabel)(_ => loadCertifiedAttributes200) }
+    }
+
   override def deleteAttributeById(
     attributeId: String
   )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route =
     authorize(ADMIN_ROLE, API_ROLE) {
-      val commander: EntityRef[Command] =
-        sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(attributeId))
-      val result: Future[Unit]          = commander.askWithStatus(ref => DeleteAttribute(attributeId, ref))
+      val operationLabel: String = s"Deleting attribute $attributeId"
+      logger.info(operationLabel)
 
-      onComplete(result) {
-        case Success(_)                     => deleteAttributeById204
-        case Failure(ex: AttributeNotFound) => deleteAttributeById404(problemOf(StatusCodes.NotFound, ex))
-        case Failure(ex)                    =>
-          logger.error(s"Error while deleting attribute $attributeId", ex)
-          internalServerError(ex.getMessage)
-      }
+      val result: Future[Unit] = commander(attributeId).askWithStatus(ref => DeleteAttribute(attributeId, ref))
+
+      onComplete(result) { deleteAttributeByIdResponse[Unit](operationLabel)(_ => deleteAttributeById204) }
     }
 
-  private def internalServerError(errorMessage: String): StandardRoute = {
-    val error = problemOf(StatusCodes.InternalServerError, GenericError(errorMessage))
-    complete(StatusCodes.InternalServerError, error)
-  }
+  private def commander(id: String): EntityRef[Command] =
+    sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id, settings.numberOfShards))
 }
