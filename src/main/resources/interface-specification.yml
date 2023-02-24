@@ -361,7 +361,7 @@ components:
       properties:
         code:
           type: string
-          minLength: 3
+          minLength: 2
           maxLength: 30
           description: identifies the unique code of this attribute on the registry
         kind:
