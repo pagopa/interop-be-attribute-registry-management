@@ -15,7 +15,8 @@
         "admin",
         "api",
         "security",
-        "m2m"
+        "m2m",
+        "internal"
       ],
       "route": "getAttributeById"
     },
