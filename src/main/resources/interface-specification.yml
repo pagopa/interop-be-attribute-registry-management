@@ -369,16 +369,16 @@ components:
           $ref: '#/components/schemas/AttributeKind'
         description:
           type: string
-          minLength: 10
-          maxLength: 250
+          minLength: 1
+          maxLength: 500
         origin:
           type: string
           maxLength: 64
           description: 'represents the origin of this attribute (e.g.: IPA for the certified ones, etc.)'
         name:
           type: string
-          minLength: 5
-          maxLength: 60
+          minLength: 1
+          maxLength: 500
       required:
         - description
         - name
