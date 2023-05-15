@@ -5,7 +5,8 @@
       "roles": [
         "admin",
         "api",
-        "m2m"
+        "m2m",
+        "internal"
       ],
       "route": "createAttribute"
     },
