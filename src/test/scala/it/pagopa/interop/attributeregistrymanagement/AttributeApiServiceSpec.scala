@@ -36,7 +36,7 @@ class AttributeApiServiceSpec extends AkkaTestSuite {
       } yield (status, createdAttribute, delStatus)
 
       val (status, createdAttribute, delStatus) = await(result)
-      assertEquals(status, Created)
+      assertEquals(status, OK)
       assertEquals(delStatus, NoContent)
       assertEquals(createdAttribute, attribute)
     }

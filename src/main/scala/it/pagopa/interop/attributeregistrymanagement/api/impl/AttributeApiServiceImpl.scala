@@ -60,7 +60,7 @@ class AttributeApiServiceImpl(
       case Some(attr) => Future.failed(AttributeAlreadyPresent(attr.name))
     }
 
-    onComplete(result) { getAgreementResponse[Attribute](operationLabel)(createAttribute201) }
+    onComplete(result) { getAgreementResponse[Attribute](operationLabel)(createAttribute200) }
   }
 
   override def getAttributeById(attributeId: String)(implicit
