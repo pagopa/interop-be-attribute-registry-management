@@ -362,7 +362,7 @@ components:
         code:
           type: string
           minLength: 2
-          maxLength: 30
+          maxLength: 64
           description: identifies the unique code of this attribute on the registry
         kind:
           description: Kind of the attribute. It's one of CERTIFIED, VERIFIED, DECLARED.
