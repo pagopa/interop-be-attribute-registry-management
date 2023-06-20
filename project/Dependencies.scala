@@ -141,7 +141,7 @@ object Dependencies {
       akka.httpTestkit            % "test,it",
       scalamock.core              % IntegrationTest,
       scalatest.core              % IntegrationTest,
-      "org.scalameta"            %% "munit"                          % "1.0.0-M6"                 % Test,
+      "org.scalameta"            %% "munit"                          % "1.0.0-M8"                 % Test,
       "org.scalameta"            %% "munit-scalacheck"               % "1.0.0-M6"                 % Test,
       "com.softwaremill.diffx"   %% "diffx-munit"                    % "0.8.3"                    % Test,
       "com.dimafeng"             %% "testcontainers-scala-scalatest" % testcontainersScalaVersion % IntegrationTest
