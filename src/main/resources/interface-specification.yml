@@ -81,29 +81,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
       description: Returns the list of currently available attributes
-  '/bulk/attributes':
-    parameters:
-      - $ref: '#/components/parameters/CorrelationIdHeader'
-      - $ref: '#/components/parameters/IpAddress'
-    get:
-      summary: 'returns the list of attributes for a given bulked ids request'
-      tags:
-        - attribute
-      operationId: getBulkedAttributes
-      responses:
-        '200':
-          description: array of attributes
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AttributesResponse'
-      description: Returns the list of attributes indicated in the request
-      parameters:
-        - in: query
-          name: ids
-          schema:
-            type: string
-          description: 'a string representing the attribute ids concatenated by ","'
   '/attributes/name/{name}':
     get:
       summary: Get Attribute by name
