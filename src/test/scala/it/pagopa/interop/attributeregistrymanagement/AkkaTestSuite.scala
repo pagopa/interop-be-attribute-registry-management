@@ -150,16 +150,6 @@ trait AkkaTestSuite extends ScalaCheckSuite {
     } yield (response.status, body.attributes.toList)
   }
 
-  def getBulkAttributes(
-    ids: List[String]
-  )(implicit actorSystem: ActorSystem[_]): Future[(StatusCode, List[Attribute])] = {
-    implicit val ec: ExecutionContext = actorSystem.executionContext
-    for {
-      response <- execute(s"bulk/attributes?ids=${ids.mkString(",")}", GET)
-      body     <- Unmarshal(response.entity).to[AttributesResponse]
-    } yield (response.status, body.attributes.toList)
-  }
-
   def deleteAttribute(attributeId: UUID)(implicit actorSystem: ActorSystem[_]): Future[StatusCode] = {
     implicit val ec: ExecutionContext = actorSystem.executionContext
     execute(s"attributes/${attributeId.toString}", DELETE).map(_.status)
