@@ -16,22 +16,20 @@ import akka.http.scaladsl.server.RouteResult.routeToFunction
 import akka.http.scaladsl.server.directives.SecurityDirectives
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
 import cats.implicits._
+import it.pagopa.interop.attributeregistrymanagement.api.impl._
 import it.pagopa.interop.attributeregistrymanagement.api.{
   AttributeApi,
   AttributeApiMarshaller,
   AttributeApiService,
   HealthApi
 }
-import it.pagopa.interop.attributeregistrymanagement.api.impl._
 import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, AttributesResponse, Problem}
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.behaviorFactory
-import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
 import it.pagopa.interop.commons.utils.AkkaUtils
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
-import it.pagopa.interop.partyregistryproxy.client.model.{Categories, Category}
 import munit.{FutureFixture, ScalaCheckSuite}
 import org.scalacheck.Gen
 
@@ -72,11 +70,6 @@ trait AkkaTestSuite extends ScalaCheckSuite {
       val timeSupplier: OffsetDateTimeSupplier       = () => OffsetDateTime.now()
       val partyApiMarshaller: AttributeApiMarshaller = AttributeApiMarshallerImpl
 
-      val partyRegistryService: PartyRegistryService = new PartyRegistryService {
-        override def getCategories(bearerToken: String)(implicit contexts: Seq[(String, String)]): Future[Categories] =
-          Future.successful(Categories(Seq(Category("YADA", "Proxied", "test", "IPA")), 1))
-      }
-
       val healthApi: HealthApi = new HealthApi(
         new HealthServiceApiImpl(),
         new HealthApiMarshallerImpl(),
@@ -84,14 +77,9 @@ trait AkkaTestSuite extends ScalaCheckSuite {
       )
 
       val partyApiService: AttributeApiService =
-        new AttributeApiServiceImpl(
-          uuidSupplier,
-          timeSupplier,
-          testkit.system,
-          sharding,
-          persistentEntity,
-          partyRegistryService
-        )(testkit.system.executionContext)
+        new AttributeApiServiceImpl(uuidSupplier, timeSupplier, testkit.system, sharding, persistentEntity)(
+          testkit.system.executionContext
+        )
 
       val attributeApi: AttributeApi = new AttributeApi(partyApiService, partyApiMarshaller, wrappingDirective)
 
@@ -163,11 +151,6 @@ trait AkkaTestSuite extends ScalaCheckSuite {
   def deleteAttribute(attributeId: UUID)(implicit actorSystem: ActorSystem[_]): Future[StatusCode] = {
     implicit val ec: ExecutionContext = actorSystem.executionContext
     execute(s"attributes/${attributeId.toString}", DELETE).map(_.status)
-  }
-
-  def loadAttributes(implicit actorSystem: ActorSystem[_]): Future[StatusCode] = {
-    implicit val ec: ExecutionContext = actorSystem.executionContext
-    execute("jobs/attributes/certified/load", POST).map(_.status)
   }
 
   def findAttributeByName(name: String)(implicit actorSystem: ActorSystem[_]): Future[(StatusCode, Attribute)] = {

@@ -1,17 +1,13 @@
 package it.pagopa.interop.attributeregistrymanagement
 
-import cats.implicits._
-import org.scalacheck.Prop._
-import akka.http.scaladsl.model.StatusCodes._
-import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, Problem}
-import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
-import java.time.OffsetDateTime
-import java.util.UUID
-
 import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.model.StatusCodes._
+import cats.implicits._
+import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, Problem}
 import munit.Compare
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import org.scalacheck.Prop._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 class AttributeApiServiceSpec extends AkkaTestSuite {
 
@@ -93,29 +89,6 @@ class AttributeApiServiceSpec extends AkkaTestSuite {
       assertEquals(status, OK)
       assertEquals(foundAttribute, attribute)
       assertEquals(delStatus, NoContent)
-    }
-  }
-
-  test("Attribute API should load attributes from proxy") {
-    implicit val as: ActorSystem[Nothing] = actorSystem()
-    implicit val ec: ExecutionContext     = as.executionContext
-
-    val expected = Attribute(
-      id = UUID.randomUUID(),
-      code = Some("YADA"),
-      kind = CERTIFIED,
-      description = "Proxied",
-      origin = Some("IPA"),
-      name = "Proxied",
-      creationTime = OffsetDateTime.now()
-    )
-
-    for {
-      _                   <- loadAttributes
-      (status, attribute) <- findAttributeByName("Proxied")
-    } yield {
-      assertEquals(status, OK)
-      assertEquals(attribute, expected)
     }
   }
 

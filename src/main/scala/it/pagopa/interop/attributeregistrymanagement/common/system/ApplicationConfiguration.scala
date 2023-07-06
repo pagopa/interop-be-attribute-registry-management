@@ -14,8 +14,6 @@ object ApplicationConfiguration {
   val jwtAudience: Set[String] =
     config.getString("attribute-registry-management.jwt.audience").split(",").toSet.filter(_.nonEmpty)
 
-  val partyProxyUrl: String = config.getString("services.party-proxy")
-
   val projectionsEnabled: Boolean = config.getBoolean("akka.projection.enabled")
 
   // Loaded only if projections are enabled

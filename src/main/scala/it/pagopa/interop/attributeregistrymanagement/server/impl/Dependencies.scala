@@ -12,6 +12,7 @@ import akka.projection.ProjectionBehavior
 import com.atlassian.oai.validator.report.ValidationReport
 import com.nimbusds.jose.proc.SecurityContext
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier
+import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
 import it.pagopa.interop.attributeregistrymanagement.api.impl.ResponseHandlers.serviceCode
 import it.pagopa.interop.attributeregistrymanagement.api.impl._
 import it.pagopa.interop.attributeregistrymanagement.api.{AttributeApi, HealthApi}
@@ -22,23 +23,19 @@ import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationCo
 }
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.projection.AttributesCqrsProjection
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
-import it.pagopa.interop.attributeregistrymanagement.service.impl.PartyRegistryServiceImpl
-import it.pagopa.interop.attributeregistrymanagement.service.{PartyProxyInvoker, PartyRegistryService}
 import it.pagopa.interop.commons.jwt.service.JWTReader
 import it.pagopa.interop.commons.jwt.service.impl.{DefaultJWTReader, getClaimsVerifier}
 import it.pagopa.interop.commons.jwt.{JWTConfiguration, KID, PublicKeysHolder, SerializedKey}
+import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.AkkaUtils.PassThroughAuthenticator
 import it.pagopa.interop.commons.utils.OpenapiUtils
 import it.pagopa.interop.commons.utils.TypeConversions._
 import it.pagopa.interop.commons.utils.errors.{Problem => CommonProblem}
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
-import it.pagopa.interop.partyregistryproxy.client.api.CategoryApi
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
 
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
-import com.typesafe.scalalogging.{Logger, LoggerTakingImplicit}
-import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
+import scala.concurrent.{ExecutionContext, Future}
 
 trait Dependencies {
 
@@ -88,25 +85,11 @@ trait Dependencies {
     )
     .toFuture
 
-  private def partyProcessService(
-    blockingEc: ExecutionContextExecutor
-  )(implicit actorSystem: ActorSystem[_]): PartyRegistryService = {
-    implicit val classic = actorSystem.classicSystem
-    PartyRegistryServiceImpl(PartyProxyInvoker(blockingEc), CategoryApi(ApplicationConfiguration.partyProxyUrl))
-  }
-
-  def attributeApi(sharding: ClusterSharding, jwtReader: JWTReader, blockingEc: ExecutionContextExecutor)(implicit
+  def attributeApi(sharding: ClusterSharding, jwtReader: JWTReader)(implicit
     actorSystem: ActorSystem[_],
     ec: ExecutionContext
   ): AttributeApi = new AttributeApi(
-    new AttributeApiServiceImpl(
-      uuidSupplier,
-      OffsetDateTimeSupplier,
-      actorSystem,
-      sharding,
-      attributePersistentEntity,
-      partyProcessService(blockingEc)
-    ),
+    new AttributeApiServiceImpl(uuidSupplier, OffsetDateTimeSupplier, actorSystem, sharding, attributePersistentEntity),
     AttributeApiMarshallerImpl,
     jwtReader.OAuth2JWTValidatorAsContexts
   )

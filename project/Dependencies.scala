@@ -74,9 +74,6 @@ object Dependencies {
   private[this] object pagopa {
     lazy val namespace = "it.pagopa"
 
-    lazy val partyProxyClient =
-      namespace %% "interop-be-party-registry-proxy-client" % partyProxyVersion
-
     lazy val commonsUtils = namespace %% "interop-commons-utils" % commonsVersion
     lazy val commonsJWT   = namespace %% "interop-commons-jwt"   % commonsVersion
     lazy val commonsCqrs  = namespace %% "interop-commons-cqrs"  % commonsVersion
@@ -135,7 +132,6 @@ object Dependencies {
       pagopa.commonsUtils         % "compile,it",
       pagopa.commonsJWT           % Compile,
       pagopa.commonsCqrs          % "compile,it",
-      pagopa.partyProxyClient     % Compile,
       scalaprotobuf.core          % "protobuf,compile",
       akka.testkit                % "test,it",
       akka.httpTestkit            % "test,it",

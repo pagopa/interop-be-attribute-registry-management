@@ -2,20 +2,16 @@ package it.pagopa.interop.attributeregistrymanagement.authz
 
 import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.Entity
-import it.pagopa.interop.attributeregistrymanagement.util.AuthorizedRoutes
 import it.pagopa.interop.attributeregistrymanagement.api.impl.AttributeApiMarshallerImpl._
 import it.pagopa.interop.attributeregistrymanagement.api.impl.AttributeApiServiceImpl
-import it.pagopa.interop.attributeregistrymanagement.model.{AttributeKind, AttributeSeed}
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.Command
+import it.pagopa.interop.attributeregistrymanagement.model.{AttributeKind, AttributeSeed}
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.attributePersistentEntity
-import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
-import it.pagopa.interop.attributeregistrymanagement.util.ClusteredMUnitRouteTest
-import it.pagopa.interop.partyregistryproxy.client.model.Categories
+import it.pagopa.interop.attributeregistrymanagement.util.{AuthorizedRoutes, ClusteredMUnitRouteTest}
 import munit.FunSuite
 
 import java.time.OffsetDateTime
 import java.util.UUID
-import scala.concurrent.Future
 
 class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest {
 
@@ -26,11 +22,7 @@ class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest
     () => OffsetDateTime.now(),
     testTypedSystem,
     testAkkaSharding,
-    testPersistentEntity,
-    new PartyRegistryService {
-      override def getCategories(bearerToken: String)(implicit contexts: Seq[(String, String)]): Future[Categories] =
-        Future.successful(Categories(Seq.empty, 0))
-    }
+    testPersistentEntity
   )
 
   test("method authorization must succeed for createAttribute") {
@@ -67,11 +59,6 @@ class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest
       endpoint,
       { implicit c: Seq[(String, String)] => service.getAttributeByOriginAndCode("fakeSeed", "code") }
     )
-  }
-
-  test("method authorization must succeed for loadCertifiedAttributes") {
-    val endpoint = AuthorizedRoutes.endpoints("loadCertifiedAttributes")
-    validateAuthorization(endpoint, { implicit c: Seq[(String, String)] => service.loadCertifiedAttributes() })
   }
 
   test("method authorization must succeed for deleteAttributeById") {
