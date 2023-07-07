@@ -61,13 +61,6 @@
       "route": "getAttributeByOriginAndCode"
     },
     {
-      "verb": "GET",
-      "roles": [
-        "internal"
-      ],
-      "route": "loadCertifiedAttributes"
-    },
-    {
       "verb": "DELETE",
       "roles": [
         "admin",

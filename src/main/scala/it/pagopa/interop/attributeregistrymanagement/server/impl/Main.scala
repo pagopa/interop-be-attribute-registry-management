@@ -1,27 +1,22 @@
 package it.pagopa.interop.attributeregistrymanagement.server.impl
 
-import cats.syntax.all._
-import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.ActorSystem
+import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.ClusterEvent
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
 import akka.cluster.typed.{Cluster, Subscribe}
 import akka.http.scaladsl.Http
-
 import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
-
+import buildinfo.BuildInfo
+import cats.syntax.all._
+import com.typesafe.scalalogging.Logger
 import it.pagopa.interop.attributeregistrymanagement.common.system.ApplicationConfiguration
+import it.pagopa.interop.attributeregistrymanagement.server.Controller
 import it.pagopa.interop.commons.logging.renderBuildInfo
 
-import it.pagopa.interop.attributeregistrymanagement.server.Controller
-
-import scala.concurrent.ExecutionContextExecutor
-import buildinfo.BuildInfo
-import com.typesafe.scalalogging.Logger
-import scala.concurrent.Future
-import scala.util.{Success, Failure}
-import akka.actor.typed.DispatcherSelector
+import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success}
 
 object Main extends App with Dependencies {
 
@@ -31,8 +26,6 @@ object Main extends App with Dependencies {
     Behaviors.setup[Nothing] { context =>
       implicit val actorSystem: ActorSystem[Nothing]          = context.system
       implicit val executionContext: ExecutionContextExecutor = actorSystem.executionContext
-      val selector: DispatcherSelector                        = DispatcherSelector.fromConfig("futures-dispatcher")
-      val blockingEc: ExecutionContextExecutor                = actorSystem.dispatchers.lookup(selector)
 
       AkkaManagement.get(actorSystem.classicSystem).start()
 
@@ -59,7 +52,7 @@ object Main extends App with Dependencies {
 
       val serverBinding: Future[Http.ServerBinding] = for {
         jwtReader <- getJwtValidator()
-        api        = attributeApi(sharding, jwtReader, blockingEc)
+        api        = attributeApi(sharding, jwtReader)
         controller = new Controller(api, healthApi, validationExceptionToRoute.some)(actorSystem.classicSystem)
         binding <- Http().newServerAt("0.0.0.0", ApplicationConfiguration.serverPort).bind(controller.routes)
       } yield binding

@@ -17,10 +17,9 @@ import it.pagopa.interop.attributeregistrymanagement.model.persistence._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.AttributeAdapters._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.validation.Validation
-import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
 import it.pagopa.interop.commons.jwt._
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
-import it.pagopa.interop.commons.utils.AkkaUtils.{getFutureBearer, getShard}
+import it.pagopa.interop.commons.utils.AkkaUtils.getShard
 import it.pagopa.interop.commons.utils.TypeConversions.OptionOps
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 
@@ -32,8 +31,7 @@ class AttributeApiServiceImpl(
   timeSupplier: OffsetDateTimeSupplier,
   system: ActorSystem[_],
   sharding: ClusterSharding,
-  entity: Entity[Command, ShardingEnvelope[Command]],
-  partyRegistryService: PartyRegistryService
+  entity: Entity[Command, ShardingEnvelope[Command]]
 )(implicit ec: ExecutionContext)
     extends AttributeApiService
     with Validation {
@@ -221,29 +219,6 @@ class AttributeApiServiceImpl(
       getAttributeByOriginAndCodeResponse[Attribute](operationLabel)(getAttributeByOriginAndCode200)
     }
   }
-
-  override def loadCertifiedAttributes()(implicit contexts: Seq[(String, String)]): Route =
-    authorize(INTERNAL_ROLE) {
-      val operationLabel: String = s"Loading certified attributes from Party Registry"
-      logger.info(operationLabel)
-
-      val result: Future[Unit] = for {
-        bearer     <- getFutureBearer(contexts)
-        categories <- partyRegistryService.getCategories(bearer)
-        attributeSeeds = categories.items.map(c =>
-          AttributeSeed(
-            code = Option(c.code),
-            kind = AttributeKind.CERTIFIED,
-            description = c.name, // passing the name since no description exists at party-registry-proxy
-            origin = Option(c.origin),
-            name = c.name
-          )
-        )
-        _ <- addNewAttributes(attributeSeeds)
-      } yield ()
-
-      onComplete(result) { loadCertifiedAttributesResponse[Unit](operationLabel)(_ => loadCertifiedAttributes200) }
-    }
 
   override def deleteAttributeById(
     attributeId: String
