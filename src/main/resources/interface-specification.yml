@@ -110,19 +110,6 @@ paths:
         in: path
         required: true
         description: name of the attribute to lookup.
-  /jobs/attributes/certified/load:
-    parameters:
-      - $ref: '#/components/parameters/CorrelationIdHeader'
-      - $ref: '#/components/parameters/IpAddress'
-    post:
-      summary: Certified attributes upload
-      tags:
-        - attribute
-      responses:
-        '200':
-          description: Attributes loaded
-      operationId: loadCertifiedAttributes
-      description: 'Loads certified attributes on this registry.'
   '/attributes/origin/{origin}/code/{code}':
     get:
       summary: Get Attribute by origin and code

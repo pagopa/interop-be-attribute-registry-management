@@ -20,7 +20,6 @@ import it.pagopa.interop.attributeregistrymanagement.model._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Dependencies
-import it.pagopa.interop.attributeregistrymanagement.service.PartyRegistryService
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import org.scalamock.scalatest.MockFactory
 import spray.json._
