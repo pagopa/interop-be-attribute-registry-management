@@ -12,6 +12,9 @@ final case class State(attributes: Map[String, PersistentAttribute]) extends Per
   def getAttributeByName(name: String): Option[PersistentAttribute] =
     attributes.values.find(p => name.equalsIgnoreCase(p.name))
 
+  def getAttributeByCodeAndName(code: String, name: String): Option[PersistentAttribute] =
+    attributes.values.find(p => p.code.exists(c => code.equalsIgnoreCase(c)) && name.equalsIgnoreCase(p.name))
+
   def getAttributeByAttributeInfo(attributeInfo: AttributeInfo): Option[PersistentAttribute] =
     attributes.values.find(attribute =>
       attribute.origin.contains(attributeInfo.origin) && attribute.code.contains(attributeInfo.code)

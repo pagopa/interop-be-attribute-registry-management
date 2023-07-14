@@ -12,5 +12,7 @@ final case class DeleteAttribute(attributeId: String, replyTo: ActorRef[StatusRe
 final case class GetAttribute(attributeId: String, replyTo: ActorRef[StatusReply[Attribute]])            extends Command
 final case class GetAttributes(from: Int, to: Int, replyTo: ActorRef[Seq[Attribute]])                    extends Command
 final case class GetAttributeByName(name: String, replyTo: ActorRef[Option[PersistentAttribute]])        extends Command
+final case class GetAttributeByCodeAndName(code: String, name: String, replyTo: ActorRef[Option[PersistentAttribute]])
+    extends Command
 final case class GetAttributeByInfo(info: AttributeInfo, replyTo: ActorRef[Option[PersistentAttribute]]) extends Command
 case object Idle                                                                                         extends Command
