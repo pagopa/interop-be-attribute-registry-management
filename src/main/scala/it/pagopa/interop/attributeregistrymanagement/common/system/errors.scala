@@ -16,4 +16,6 @@ object errors {
 
   final case class ValidationException(field: String, validationError: String)
       extends ComponentError("0005", s"Validation controls on $field do not pass - $validationError")
+
+  final case object MissingAttributeCode extends ComponentError("0006", s"Certified attribute requires code")
 }
