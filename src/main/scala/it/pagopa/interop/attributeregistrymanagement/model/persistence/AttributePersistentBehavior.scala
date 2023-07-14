@@ -60,6 +60,10 @@ object AttributePersistentBehavior {
         replyTo ! state.getAttributeByName(name)
         Effect.none[Event, State]
 
+      case GetAttributeByCodeAndName(code, name, replyTo) =>
+        replyTo ! state.getAttributeByCodeAndName(code, name)
+        Effect.none[Event, State]
+
       case GetAttributeByInfo(attributeInfo, replyTo) =>
         replyTo ! state.getAttributeByAttributeInfo(attributeInfo)
         Effect.none[Event, State]

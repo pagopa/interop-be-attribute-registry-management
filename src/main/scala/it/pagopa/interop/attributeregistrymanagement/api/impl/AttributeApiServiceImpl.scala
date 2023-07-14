@@ -51,15 +51,32 @@ class AttributeApiServiceImpl(
     val operationLabel: String = s"Creating attribute ${attributeSeed.name}"
     logger.info(operationLabel)
 
-    val result: Future[Attribute] = attributeByCommand(GetAttributeByName(attributeSeed.name, _)).flatMap {
+    val result: Future[Attribute] = attributeSeed.kind match {
+      case AttributeKind.CERTIFIED => addAttributeByNameAndCode(attributeSeed)
+      case _                       => addAttributeByName(attributeSeed)
+    }
+
+    onComplete(result) { getAgreementResponse[Attribute](operationLabel)(createAttribute200) }
+  }
+
+  private def addAttributeByName(attributeSeed: AttributeSeed): Future[Attribute] = {
+    attributeByCommand(GetAttributeByName(attributeSeed.name, _)).flatMap {
       case None       =>
         val persistentAttribute = PersistentAttribute.fromSeed(attributeSeed, uuidSupplier, timeSupplier)
         commander(persistentAttribute.id.toString).ask(CreateAttribute(persistentAttribute, _))
       case Some(attr) => Future.failed(AttributeAlreadyPresent(attr.name))
     }
-
-    onComplete(result) { getAgreementResponse[Attribute](operationLabel)(createAttribute200) }
   }
+
+  private def addAttributeByNameAndCode(attributeSeed: AttributeSeed): Future[Attribute] = for {
+    code  <- attributeSeed.code.toFuture(MissingAttributeCode)
+    added <- attributeByCommand(GetAttributeByCodeAndName(code, attributeSeed.name, _)).flatMap {
+      case None       =>
+        val persistentAttribute = PersistentAttribute.fromSeed(attributeSeed, uuidSupplier, timeSupplier)
+        commander(persistentAttribute.id.toString).ask(CreateAttribute(persistentAttribute, _))
+      case Some(attr) => Future.failed(AttributeAlreadyPresent(attr.name))
+    }
+  } yield added
 
   override def getAttributeById(attributeId: String)(implicit
     contexts: Seq[(String, String)],
