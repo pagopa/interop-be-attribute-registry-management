@@ -134,23 +134,6 @@ class AttributeApiServiceImpl(
     onComplete(attributes) { getAttributesResponse[AttributesResponse](operationLabel)(getAttributes200) }
   }
 
-  override def getBulkedAttributes(ids: Option[String])(implicit
-    contexts: Seq[(String, String)],
-    toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
-    val operationLabel: String = s"Retrieving attributes in bulk by identifiers in (${ids.getOrElse("")})"
-    logger.info(operationLabel)
-
-    val result: Future[AttributesResponse] = Future
-      .traverse(ids.getOrElse("").split(",").toList.filter(_.nonEmpty))(id =>
-        commander(id).ask(ref => GetAttribute(id, ref))
-      )
-      .map(_.collect { case r if r.isSuccess => r.getValue })
-      .map(AttributesResponse)
-
-    onComplete(result) { getBulkedAttributesResponse[AttributesResponse](operationLabel)(getBulkedAttributes200) }
-  }
-
   private def slices(commander: EntityRef[Command], sliceSize: Int): Future[List[Attribute]] = {
     val commandIterator: Iterator[ActorRef[Seq[Attribute]] => GetAttributes] = Iterator
       .from(0, sliceSize)

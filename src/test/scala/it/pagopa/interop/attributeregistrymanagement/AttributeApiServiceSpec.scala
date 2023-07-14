@@ -109,17 +109,4 @@ class AttributeApiServiceSpec extends AkkaTestSuite {
     }
   }
 
-  test("Attribute API should not fail on missing attribute during bulk retrieve") {
-    implicit val as: ActorSystem[Nothing] = actorSystem()
-    implicit val ec: ExecutionContext     = as.executionContext
-
-    val expected = List()
-
-    for {
-      (status, attribute) <- getBulkAttributes(Nil)
-    } yield {
-      assertEquals(status, OK)
-      assertEquals(attribute, expected)
-    }
-  }
 }
