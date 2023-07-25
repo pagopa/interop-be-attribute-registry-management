@@ -47,7 +47,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, M2M_ROLE, INTERNAL_ROLE) {
+  ): Route = {
     val operationLabel: String = s"Creating attribute ${attributeSeed.name}"
     logger.info(operationLabel)
 
@@ -82,7 +82,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE, INTERNAL_ROLE) {
+  ): Route = {
     val operationLabel: String = s"Retrieving attribute $attributeId"
     logger.info(operationLabel)
 
@@ -95,7 +95,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
+  ): Route = {
     val operationLabel: String = s"Retrieving attribute named $name"
     logger.info(operationLabel)
 
@@ -113,7 +113,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttributesResponse: ToEntityMarshaller[AttributesResponse],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, API_ROLE, SECURITY_ROLE, M2M_ROLE) {
+  ): Route = {
     val operationLabel: String = s"Retrieving attributes by search string $search"
     logger.info(operationLabel)
 
@@ -206,7 +206,7 @@ class AttributeApiServiceImpl(
     contexts: Seq[(String, String)],
     toEntityMarshallerAttribute: ToEntityMarshaller[Attribute],
     toEntityMarshallerProblem: ToEntityMarshaller[Problem]
-  ): Route = authorize(ADMIN_ROLE, INTERNAL_ROLE, M2M_ROLE) {
+  ): Route = {
     val operationLabel: String = s"Retrieving attribute having origin $origin and code $code"
     logger.info(operationLabel)
 
