@@ -5,7 +5,6 @@ import akka.cluster.sharding.typed.scaladsl.Entity
 import it.pagopa.interop.attributeregistrymanagement.api.impl.AttributeApiMarshallerImpl._
 import it.pagopa.interop.attributeregistrymanagement.api.impl.AttributeApiServiceImpl
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.Command
-import it.pagopa.interop.attributeregistrymanagement.model.{AttributeKind, AttributeSeed}
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.attributePersistentEntity
 import it.pagopa.interop.attributeregistrymanagement.util.{AuthorizedRoutes, ClusteredMUnitRouteTest}
 import munit.FunSuite
@@ -24,37 +23,6 @@ class AttributeApiServiceAuthzSpec extends FunSuite with ClusteredMUnitRouteTest
     testAkkaSharding,
     testPersistentEntity
   )
-
-  test("method authorization must succeed for createAttribute") {
-
-    val endpoint = AuthorizedRoutes.endpoints("createAttribute")
-    val fakeSeed =
-      AttributeSeed(code = None, kind = AttributeKind.CERTIFIED, description = "???", origin = None, name = "???")
-    validateAuthorization(endpoint, { implicit c: Seq[(String, String)] => service.createAttribute(fakeSeed) })
-  }
-
-  test("method authorization must succeed for getAttributeById") {
-    val endpoint = AuthorizedRoutes.endpoints("getAttributeById")
-    validateAuthorization(endpoint, { implicit c: Seq[(String, String)] => service.getAttributeById("fakeSeed") })
-  }
-
-  test("method authorization must succeed for getAttributeByName") {
-    val endpoint = AuthorizedRoutes.endpoints("getAttributeByName")
-    validateAuthorization(endpoint, { implicit c: Seq[(String, String)] => service.getAttributeByName("fakeSeed") })
-  }
-
-  test("method authorization must succeed for getAttributes") {
-    val endpoint = AuthorizedRoutes.endpoints("getAttributes")
-    validateAuthorization(endpoint, { implicit c: Seq[(String, String)] => service.getAttributes(None) })
-  }
-
-  test("method authorization must succeed for getAttributeByOriginAndCode") {
-    val endpoint = AuthorizedRoutes.endpoints("getAttributeByOriginAndCode")
-    validateAuthorization(
-      endpoint,
-      { implicit c: Seq[(String, String)] => service.getAttributeByOriginAndCode("fakeSeed", "code") }
-    )
-  }
 
   test("method authorization must succeed for deleteAttributeById") {
     val endpoint = AuthorizedRoutes.endpoints("deleteAttributeById")

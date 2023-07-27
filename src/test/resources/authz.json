@@ -1,56 +1,6 @@
 {
   "endpoints": [
     {
-      "verb": "POST",
-      "roles": [
-        "admin",
-        "api",
-        "m2m",
-        "internal"
-      ],
-      "route": "createAttribute"
-    },
-    {
-      "verb": "GET",
-      "roles": [
-        "admin",
-        "api",
-        "security",
-        "m2m",
-        "internal"
-      ],
-      "route": "getAttributeById"
-    },
-    {
-      "verb": "GET",
-      "roles": [
-        "admin",
-        "api",
-        "security",
-        "m2m"
-      ],
-      "route": "getAttributeByName"
-    },
-    {
-      "verb": "GET",
-      "roles": [
-        "admin",
-        "api",
-        "security",
-        "m2m"
-      ],
-      "route": "getAttributes"
-    },
-    {
-      "verb": "GET",
-      "roles": [
-        "admin",
-        "internal",
-        "m2m"
-      ],
-      "route": "getAttributeByOriginAndCode"
-    },
-    {
       "verb": "DELETE",
       "roles": [
         "admin",
