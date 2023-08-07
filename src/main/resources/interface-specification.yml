@@ -175,21 +175,6 @@ paths:
                 $ref: '#/components/schemas/Problem'
       operationId: getAttributeById
       description: 'returns the attribute in the registry corresponding to attributeId, if any.'
-    delete:
-      summary: Delete Attribute
-      tags:
-        - attribute
-      responses:
-        '204':
-          description: Delete Attribute
-        '404':
-          description: Attribute not found
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-      operationId: deleteAttributeById
-      description: 'delete the attribute in the registry corresponding to attributeId, if any.'
   /status:
     get:
       tags:

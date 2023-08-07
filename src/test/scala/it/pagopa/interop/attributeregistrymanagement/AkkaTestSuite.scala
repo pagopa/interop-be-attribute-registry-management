@@ -3,8 +3,8 @@ package it.pagopa.interop.attributeregistrymanagement
 import akka.actor
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, ActorTestKitBase}
 import akka.actor.typed.ActorSystem
-import akka.cluster.sharding.typed.ShardingEnvelope
-import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityRef}
+import akka.cluster.sharding.typed.{ClusterShardingSettings, ShardingEnvelope}
 import akka.cluster.typed.{Cluster, Join}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshalling.{Marshal, ToEntityMarshaller}
@@ -15,6 +15,7 @@ import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.server.RouteResult.routeToFunction
 import akka.http.scaladsl.server.directives.SecurityDirectives
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshal, Unmarshaller}
+import akka.util.Timeout
 import cats.implicits._
 import it.pagopa.interop.attributeregistrymanagement.api.impl._
 import it.pagopa.interop.attributeregistrymanagement.api.{
@@ -23,12 +24,14 @@ import it.pagopa.interop.attributeregistrymanagement.api.{
   AttributeApiService,
   HealthApi
 }
+import it.pagopa.interop.attributeregistrymanagement.common.system.errors.AttributeAlreadyPresent
 import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
-import it.pagopa.interop.attributeregistrymanagement.model.persistence.{AttributePersistentBehavior, Command}
+import it.pagopa.interop.attributeregistrymanagement.model.persistence._
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, AttributesResponse, Problem}
 import it.pagopa.interop.attributeregistrymanagement.server.Controller
 import it.pagopa.interop.attributeregistrymanagement.server.impl.Main.behaviorFactory
 import it.pagopa.interop.commons.utils.AkkaUtils
+import it.pagopa.interop.commons.utils.AkkaUtils.getShard
 import it.pagopa.interop.commons.utils.service.{OffsetDateTimeSupplier, UUIDSupplier}
 import munit.{FutureFixture, ScalaCheckSuite}
 import org.scalacheck.Gen
@@ -36,7 +39,7 @@ import org.scalacheck.Gen
 import java.net.InetAddress
 import java.time.OffsetDateTime
 import java.util.UUID
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 trait AkkaTestSuite extends ScalaCheckSuite {
@@ -140,7 +143,26 @@ trait AkkaTestSuite extends ScalaCheckSuite {
 
   def deleteAttribute(attributeId: UUID)(implicit actorSystem: ActorSystem[_]): Future[StatusCode] = {
     implicit val ec: ExecutionContext = actorSystem.executionContext
-    execute(s"attributes/${attributeId.toString}", DELETE).map(_.status)
+    implicit val timeout: Timeout     = 300.seconds
+
+    val attributeIdString    = attributeId.toString
+    val result: Future[Unit] =
+      commander(attributeIdString).askWithStatus(ref => DeleteAttribute(attributeIdString, ref))
+
+    result
+      .map(_ => StatusCodes.NoContent)
+      .recover {
+        case _: AttributeAlreadyPresent => StatusCodes.Conflict
+        case _                          => StatusCodes.InternalServerError
+      }
+  }
+
+  private def commander(id: String)(implicit actorSystem: ActorSystem[_]): EntityRef[Command] = {
+    val sharding: ClusterSharding                                    = ClusterSharding(actorSystem)
+    val persistentEntity: Entity[Command, ShardingEnvelope[Command]] =
+      Entity(AttributePersistentBehavior.TypeKey)(behaviorFactory)
+    val settings: ClusterShardingSettings = persistentEntity.settings.getOrElse(ClusterShardingSettings(actorSystem))
+    sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id, settings.numberOfShards))
   }
 
   def findAttributeByName(name: String)(implicit actorSystem: ActorSystem[_]): Future[(StatusCode, Attribute)] = {
