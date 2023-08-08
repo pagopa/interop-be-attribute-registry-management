@@ -24,7 +24,6 @@ import it.pagopa.interop.attributeregistrymanagement.api.{
   AttributeApiService,
   HealthApi
 }
-import it.pagopa.interop.attributeregistrymanagement.common.system.errors.AttributeAlreadyPresent
 import it.pagopa.interop.attributeregistrymanagement.model.AttributeKind._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence._
 import it.pagopa.interop.attributeregistrymanagement.model.{Attribute, AttributeSeed, AttributesResponse, Problem}
@@ -152,8 +151,7 @@ trait AkkaTestSuite extends ScalaCheckSuite {
     result
       .map(_ => StatusCodes.NoContent)
       .recover {
-        case _: AttributeAlreadyPresent => StatusCodes.Conflict
-        case _                          => StatusCodes.InternalServerError
+        case _ => StatusCodes.InternalServerError
       }
   }
 
