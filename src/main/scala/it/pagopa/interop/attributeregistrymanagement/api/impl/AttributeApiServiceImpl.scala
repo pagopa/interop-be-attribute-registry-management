@@ -17,7 +17,6 @@ import it.pagopa.interop.attributeregistrymanagement.model.persistence._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute.AttributeAdapters._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.attribute._
 import it.pagopa.interop.attributeregistrymanagement.model.persistence.validation.Validation
-import it.pagopa.interop.commons.jwt._
 import it.pagopa.interop.commons.logging.{CanLogContextFields, ContextFieldsToLog}
 import it.pagopa.interop.commons.utils.AkkaUtils.getShard
 import it.pagopa.interop.commons.utils.TypeConversions.OptionOps
@@ -219,18 +218,6 @@ class AttributeApiServiceImpl(
       getAttributeByOriginAndCodeResponse[Attribute](operationLabel)(getAttributeByOriginAndCode200)
     }
   }
-
-  override def deleteAttributeById(
-    attributeId: String
-  )(implicit contexts: Seq[(String, String)], toEntityMarshallerProblem: ToEntityMarshaller[Problem]): Route =
-    authorize(ADMIN_ROLE, API_ROLE) {
-      val operationLabel: String = s"Deleting attribute $attributeId"
-      logger.info(operationLabel)
-
-      val result: Future[Unit] = commander(attributeId).askWithStatus(ref => DeleteAttribute(attributeId, ref))
-
-      onComplete(result) { deleteAttributeByIdResponse[Unit](operationLabel)(_ => deleteAttributeById204) }
-    }
 
   private def commander(id: String): EntityRef[Command] =
     sharding.entityRefFor(AttributePersistentBehavior.TypeKey, getShard(id, settings.numberOfShards))
