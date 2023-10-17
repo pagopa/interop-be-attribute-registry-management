@@ -150,7 +150,7 @@ trait AkkaTestSuite extends ScalaCheckSuite {
 
     result
       .map(_ => StatusCodes.NoContent)
-      .recover (_ => StatusCodes.InternalServerError)
+      .recover(_ => StatusCodes.InternalServerError)
   }
 
   private def commander(id: String)(implicit actorSystem: ActorSystem[_]): EntityRef[Command] = {
