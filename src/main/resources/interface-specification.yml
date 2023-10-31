@@ -24,7 +24,6 @@ paths:
   '/attributes':
     parameters:
       - $ref: '#/components/parameters/CorrelationIdHeader'
-      - $ref: '#/components/parameters/IpAddress'
     post:
       summary: Creates attribute
       tags:
@@ -103,7 +102,6 @@ paths:
       description: 'returns the attribute in the registry corresponding to name, if any.'
     parameters:
       - $ref: '#/components/parameters/CorrelationIdHeader'
-      - $ref: '#/components/parameters/IpAddress'
       - schema:
           type: string
         name: name
@@ -132,7 +130,6 @@ paths:
       description: 'returns the attribute in the registry corresponding to origin and code, if any.'
     parameters:
       - $ref: '#/components/parameters/CorrelationIdHeader'
-      - $ref: '#/components/parameters/IpAddress'
       - schema:
           type: string
         name: origin
@@ -148,7 +145,6 @@ paths:
   '/attributes/{attributeId}':
     parameters:
       - $ref: '#/components/parameters/CorrelationIdHeader'
-      - $ref: '#/components/parameters/IpAddress'
       - schema:
           type: string
           format: uuid
@@ -195,11 +191,6 @@ components:
       in: header
       name: X-Correlation-Id
       required: true
-      schema:
-        type: string
-    IpAddress:
-      in: header
-      name: X-Forwarded-For
       schema:
         type: string
   schemas:
